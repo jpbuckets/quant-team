@@ -215,7 +215,12 @@ async def logout():
 async def dashboard_page(request: Request):
     if not _auth_required(request):
         return RedirectResponse("/login", status_code=302)
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    try:
+        return templates.TemplateResponse("dashboard.html", {"request": request})
+    except Exception as e:
+        from fastapi.responses import PlainTextResponse
+        import traceback
+        return PlainTextResponse(f"Template error:\n{traceback.format_exc()}", status_code=500)
 
 
 @app.get("/trades")

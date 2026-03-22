@@ -2,9 +2,11 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-COPY . .
+COPY pyproject.toml .
+COPY quant_team/ quant_team/
+COPY run.py .
 
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir -e .
 
 RUN mkdir -p data
 

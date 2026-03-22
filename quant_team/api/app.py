@@ -189,7 +189,7 @@ def _auth_required(request: Request):
 async def login_page(request: Request):
     if _auth_required(request):
         return RedirectResponse("/", status_code=302)
-    return templates.TemplateResponse("login.html", context={"request": request, "error": None})
+    return templates.TemplateResponse(request, "login.html", {"error": None})
 
 
 @app.post("/login")
@@ -199,7 +199,7 @@ async def login_submit(request: Request, email: str = Form(...), password: str =
         cookie = create_session_cookie(email)
         response.set_cookie(COOKIE_NAME, cookie, max_age=COOKIE_MAX_AGE, httponly=True)
         return response
-    return templates.TemplateResponse("login.html", context={"request": request, "error": "Invalid credentials"})
+    return templates.TemplateResponse(request, "login.html", {"error": "Invalid credentials"})
 
 
 @app.get("/logout")
@@ -216,7 +216,7 @@ async def dashboard_page(request: Request):
     if not _auth_required(request):
         return RedirectResponse("/login", status_code=302)
     try:
-        return templates.TemplateResponse("dashboard.html", context={"request": request})
+        return templates.TemplateResponse(request, "dashboard.html")
     except Exception as e:
         from fastapi.responses import PlainTextResponse
         import traceback
@@ -227,28 +227,28 @@ async def dashboard_page(request: Request):
 async def trades_page(request: Request):
     if not _auth_required(request):
         return RedirectResponse("/login", status_code=302)
-    return templates.TemplateResponse("trades.html", context={"request": request})
+    return templates.TemplateResponse(request, "trades.html")
 
 
 @app.get("/portfolio")
 async def portfolio_page(request: Request):
     if not _auth_required(request):
         return RedirectResponse("/login", status_code=302)
-    return templates.TemplateResponse("portfolio.html", context={"request": request})
+    return templates.TemplateResponse(request, "portfolio.html")
 
 
 @app.get("/analysis")
 async def analysis_page(request: Request):
     if not _auth_required(request):
         return RedirectResponse("/login", status_code=302)
-    return templates.TemplateResponse("analysis.html", context={"request": request})
+    return templates.TemplateResponse(request, "analysis.html")
 
 
 @app.get("/market")
 async def market_page(request: Request):
     if not _auth_required(request):
         return RedirectResponse("/login", status_code=302)
-    return templates.TemplateResponse("market.html", context={"request": request})
+    return templates.TemplateResponse(request, "market.html")
 
 
 @app.get("/api/debug/paths")

@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% block title %}MARKET_DATA{% endblock %}
+{% block nav_market %}nav-active{% endblock %}
+
+{% block content %}
+<div x-data="marketApp()" x-init="init()">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h2 class="text-sm text-term-green text-glow uppercase tracking-widest">// Market Data</h2>
+            <p class="text-[0.6rem] text-term-dim mt-1">live quotes, charts, indicators & options chains</p>
+        </div>
+        <div class="flex gap-2 items-center">
+            <span class="text-term-dim text-xs">$</span>
+            <input x-model="searchTicker" type="text" placeholder="ticker..."
+                   class="bg-term-panel border border-term-border text-xs text-term-green px-3 py-1.5 w-36 focus:border-term-green focus:outline-none placeholder-term-dim"
+                   @keydown.enter="lookupTicker()">
+            <button @click="lookupTicker()" class="px-3 py-1.5 border border-term-green text-term-green text-xs hover:bg-term-greenMuted transition-colors">
+                [LOOKUP]
+            </button>
+        </div>
+    </div>
+
+    <!-- Watchlist -->
+    <div class="bg-term-panel border border-term-border term-glow mb-4">
+        <div class="px-4 py-3 border-b border-term-border">
+            <span class="text-xs text-term-amber text-glow-amber uppercase tracking-wider">Watchlist</span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-xs">
+                <thead class="text-term-dim border-b border-term-border text-[0.6rem] uppercase tracking-wider">
+                    <tr>
+                        <th class="text-left px-4 py-2">Ticker</th>
+                        <th class="text-right px-4 py-2">Price</th>
+                        <th class="text-right px-4 py-2">Change</th>
+                        <th class="text-right px-4 py-2">Volume</th>
+                        <th class="text-right px-4 py-2">Mkt Cap</th>
+                        <th class="text-left px-4 py-2"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="q in watchlist" :key="q.ticker">
+                        <tr class="border-b border-term-border/50 term-row cursor-pointer" @click="selectTicker(q.ticker)">
+                            <td class="px-4 py-2 text-term-bright font-semibold" x-text="q.ticker"></td>
+                            <td class="px-4 py-2 text-right text-term-bright" x-text="'$' + q.price.toFixed(2)"></td>
+                            <td class="px-4 py-2 text-right" :class="q.change_pct >= 0 ? 'text-term-green' : 'text-term-red'"
+                                x-text="(q.change_pct >= 0 ? '+' : '') + q.change_pct.toFixed(2) + '%'"></td>
+                            <td class="px-4 py-2 text-right text-term-dim" x-text="(q.volume || 0).toLocaleString()"></td>
+                            <td class="px-4 py-2 text-right text-term-dim" x-text="'$' + (q.market_cap / 1e9).toFixed(1) + 'B'"></td>
+                            <td class="px-4 py-2">
+                                <button @click.stop="selectTicker(q.ticker)" class="text-[0.6rem] text-term-cyan hover:text-term-green transition-colors">[chart]</button>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+            <p x-show="watchlist.length === 0" class="text-term-dim text-center py-6 text-xs">loading quotes...</p>
+        </div>
+    </div>
+
+    <!-- Chart & Detail -->
+    <template x-if="selectedTicker">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <!-- Price Chart -->
+            <div class="bg-term-panel border border-term-border term-glow">
+                <div class="px-4 py-3 border-b border-term-border">
+                    <span class="text-xs text-term-cyan text-glow-cyan uppercase tracking-wider" x-text="selectedTicker + ' // PRICE'"></span>
+                </div>
+                <div class="p-4">
+                    <canvas id="priceChart" height="200"></canvas>
+                </div>
+            </div>
+
+            <!-- Indicators -->
+            <div class="bg-term-panel border border-term-border term-glow">
+                <div class="px-4 py-3 border-b border-term-border">
+                    <span class="text-xs text-term-green text-glow uppercase tracking-wider">Technical Indicators</span>
+                </div>
+                <div class="p-4 text-[0.65rem] text-term-text whitespace-pre-wrap max-h-[400px] overflow-y-auto leading-relaxed" x-text="indicators"></div>
+            </div>
+
+            <!-- Options Chain -->
+            <div class="bg-term-panel border border-term-border term-glow lg:col-span-2" x-show="optionsData && optionsData.chains && Object.keys(optionsData.chains).length > 0">
+                <div class="px-4 py-3 border-b border-term-border">
+                    <span class="text-xs text-term-amber text-glow-amber uppercase tracking-wider" x-text="selectedTicker + ' // OPTIONS'"></span>
+                </div>
+                <div class="p-4">
+                    <template x-if="optionsData && optionsData.expirations">
+                        <div>
+                            <!-- Expiry tabs -->
+                            <div class="flex gap-1 mb-3 flex-wrap">
+                                <template x-for="exp in optionsData.expirations.slice(0, 5)" :key="exp">
+                                    <button @click="selectedExpiry = exp"
+                                            class="px-2 py-1 text-[0.6rem] border transition-colors"
+                                            :class="selectedExpiry === exp ? 'border-term-green text-term-green bg-term-greenMuted/20' : 'border-term-border text-term-dim hover:border-term-green/50'"
+                                            x-text="exp"></button>
+                                </template>
+                            </div>
+                            <!-- Chain table -->
+                            <template x-if="selectedExpiry && optionsData.chains[selectedExpiry]">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <div class="text-[0.6rem] text-term-green uppercase tracking-wider mb-2 font-semibold">Calls</div>
+                                        <div class="text-[0.6rem] text-term-dim flex justify-between px-1 mb-1">
+                                            <span>Strike</span><span>Last</span><span>Vol</span><span>IV</span>
+                                        </div>
+                                        <div class="space-y-px max-h-56 overflow-y-auto">
+                                            <template x-for="opt in optionsData.chains[selectedExpiry].calls.slice(0, 20)" :key="'c'+opt.strike">
+                                                <div class="flex justify-between text-[0.6rem] px-1 py-0.5"
+                                                     :class="opt.inTheMoney ? 'bg-term-greenMuted/20 text-term-green' : 'text-term-text'">
+                                                    <span class="w-16" x-text="'$' + opt.strike.toFixed(2)"></span>
+                                                    <span class="w-14 text-right" x-text="'$' + opt.lastPrice.toFixed(2)"></span>
+                                                    <span class="w-12 text-right text-term-dim" x-text="(opt.volume || 0)"></span>
+                                                    <span class="w-12 text-right text-term-dim" x-text="((opt.impliedVolatility || 0) * 100).toFixed(0) + '%'"></span>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="text-[0.6rem] text-term-red uppercase tracking-wider mb-2 font-semibold">Puts</div>
+                                        <div class="text-[0.6rem] text-term-dim flex justify-between px-1 mb-1">
+                                            <span>Strike</span><span>Last</span><span>Vol</span><span>IV</span>
+                                        </div>
+                                        <div class="space-y-px max-h-56 overflow-y-auto">
+                                            <template x-for="opt in optionsData.chains[selectedExpiry].puts.slice(0, 20)" :key="'p'+opt.strike">
+                                                <div class="flex justify-between text-[0.6rem] px-1 py-0.5"
+                                                     :class="opt.inTheMoney ? 'bg-term-redMuted/20 text-term-red' : 'text-term-text'">
+                                                    <span class="w-16" x-text="'$' + opt.strike.toFixed(2)"></span>
+                                                    <span class="w-14 text-right" x-text="'$' + opt.lastPrice.toFixed(2)"></span>
+                                                    <span class="w-12 text-right text-term-dim" x-text="(opt.volume || 0)"></span>
+                                                    <span class="w-12 text-right text-term-dim" x-text="((opt.impliedVolatility || 0) * 100).toFixed(0) + '%'"></span>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </template>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function marketApp() {
+    return {
+        watchlist: [],
+        searchTicker: '',
+        selectedTicker: null,
+        chartData: null,
+        indicators: '',
+        optionsData: null,
+        selectedExpiry: null,
+        priceChart: null,
+        defaultTickers: ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'TSLA', 'META', 'SPY', 'QQQ'],
+
+        async init() { await this.loadWatchlist(); },
+
+        async loadWatchlist() {
+            this.watchlist = [];
+            for (const ticker of this.defaultTickers) {
+                try {
+                    const res = await fetch(`/api/market/quote/${ticker}`);
+                    if (res.ok) this.watchlist.push(await res.json());
+                } catch (e) {}
+            }
+        },
+
+        async lookupTicker() { if (this.searchTicker) await this.selectTicker(this.searchTicker.toUpperCase()); },
+
+        async selectTicker(ticker) {
+            this.selectedTicker = ticker;
+            this.selectedExpiry = null;
+
+            try {
+                const res = await fetch(`/api/market/chart/${ticker}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    this.chartData = data.data;
+                    this.indicators = data.indicators;
+                    this.$nextTick(() => this.renderChart());
+                }
+            } catch (e) {}
+
+            try {
+                const res = await fetch(`/api/market/options/${ticker}`);
+                if (res.ok) {
+                    this.optionsData = await res.json();
+                    if (this.optionsData.expirations?.length > 0) this.selectedExpiry = this.optionsData.expirations[0];
+                }
+            } catch (e) {}
+        },
+
+        renderChart() {
+            if (!this.chartData) return;
+            const ctx = document.getElementById('priceChart');
+            if (!ctx) return;
+            if (this.priceChart) this.priceChart.destroy();
+
+            this.priceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: this.chartData.map(d => d.date),
+                    datasets: [{
+                        label: this.selectedTicker,
+                        data: this.chartData.map(d => d.close),
+                        borderColor: '#00ff41',
+                        backgroundColor: 'rgba(0, 255, 65, 0.03)',
+                        fill: true,
+                        tension: 0.2,
+                        pointRadius: 0,
+                        borderWidth: 1.5,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#3a4a5c', font: { family: 'JetBrains Mono', size: 9 }, maxTicksLimit: 10 }, grid: { color: '#1b2838' } },
+                        y: { ticks: { color: '#3a4a5c', font: { family: 'JetBrains Mono', size: 9 }, callback: v => '$' + v.toLocaleString() }, grid: { color: '#1b2838' } },
+                    }
+                }
+            });
+        },
+    };
+}
+</script>
+{% endblock %}

@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+{% block title %}DASHBOARD{% endblock %}
+{% block nav_dashboard %}nav-active{% endblock %}
+
+{% block content %}
+<div x-data="dashboardApp()" x-init="init()">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h2 class="text-sm text-term-green text-glow uppercase tracking-widest">// Dashboard</h2>
+            <p class="text-[0.6rem] text-term-dim mt-1">real-time portfolio overview & recommendations</p>
+        </div>
+        <button @click="runAnalysis()" :disabled="generating"
+                class="px-4 py-2 border border-term-green text-term-green text-xs hover:bg-term-greenMuted disabled:border-term-dim disabled:text-term-dim transition-colors">
+            <span x-show="generating" class="mr-1">[...]</span>
+            <span x-text="generating ? 'ANALYZING...' : '[ RUN ANALYSIS ]'"></span>
+        </button>
+    </div>
+
+    <!-- Portfolio Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <div class="bg-term-panel border border-term-border p-4 term-glow">
+            <div class="text-[0.6rem] text-term-dim uppercase tracking-wider">Total Value</div>
+            <div class="text-lg text-term-green text-glow mt-1 font-semibold" x-text="'$' + formatNumber(portfolio.total_value)">$10,000.00</div>
+        </div>
+        <div class="bg-term-panel border border-term-border p-4 term-glow">
+            <div class="text-[0.6rem] text-term-dim uppercase tracking-wider">Cash Available</div>
+            <div class="text-lg text-term-amber text-glow-amber mt-1 font-semibold" x-text="'$' + formatNumber(portfolio.cash)">$10,000.00</div>
+        </div>
+        <div class="bg-term-panel border border-term-border p-4 term-glow">
+            <div class="text-[0.6rem] text-term-dim uppercase tracking-wider">Total Return</div>
+            <div class="text-lg mt-1 font-semibold"
+                 :class="portfolio.total_return_pct >= 0 ? 'text-term-green text-glow' : 'text-term-red text-glow-red'"
+                 x-text="formatPct(portfolio.total_return_pct)">+0.00%</div>
+        </div>
+        <div class="bg-term-panel border border-term-border p-4 term-glow">
+            <div class="text-[0.6rem] text-term-dim uppercase tracking-wider">Unrealized P&L</div>
+            <div class="text-lg mt-1 font-semibold"
+                 :class="portfolio.unrealized_pnl >= 0 ? 'text-term-green text-glow' : 'text-term-red text-glow-red'"
+                 x-text="'$' + formatNumber(portfolio.unrealized_pnl)">$0.00</div>
+        </div>
+    </div>
+
+    <!-- Two Column Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Open Positions -->
+        <div class="bg-term-panel border border-term-border term-glow">
+            <div class="px-4 py-3 border-b border-term-border flex items-center justify-between">
+                <span class="text-xs text-term-cyan text-glow-cyan uppercase tracking-wider">Open Positions</span>
+                <span class="text-[0.6rem] text-term-dim" x-text="(portfolio.positions?.length || 0) + ' active'"></span>
+            </div>
+            <div class="p-3">
+                <template x-if="portfolio.positions && portfolio.positions.length > 0">
+                    <div class="space-y-1">
+                        <template x-for="pos in portfolio.positions" :key="pos.id">
+                            <div class="flex items-center justify-between p-2 border border-term-border hover:border-term-green/20 transition-colors text-xs">
+                                <div>
+                                    <span class="text-term-bright font-semibold" x-text="pos.ticker"></span>
+                                    <span class="text-term-dim ml-1" x-text="pos.position_type"></span>
+                                    <div class="text-[0.6rem] text-term-dim mt-0.5">
+                                        <span x-text="pos.quantity"></span>
+                                        <span class="mx-1">@</span>
+                                        <span x-text="'$' + pos.entry_price.toFixed(2)"></span>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div :class="pos.unrealized_pnl >= 0 ? 'text-term-green' : 'text-term-red'"
+                                         x-text="(pos.unrealized_pnl >= 0 ? '+' : '') + '$' + pos.unrealized_pnl.toFixed(2)"></div>
+                                    <div class="text-[0.6rem]" :class="pos.pnl_pct >= 0 ? 'text-term-greenDim' : 'text-term-redDim'"
+                                         x-text="(pos.pnl_pct >= 0 ? '+' : '') + pos.pnl_pct.toFixed(1) + '%'"></div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+                <template x-if="!portfolio.positions || portfolio.positions.length === 0">
+                    <div class="text-center py-8 text-term-dim text-xs">
+                        <div>no open positions</div>
+                        <div class="text-[0.6rem] mt-1">run analysis to start autonomous trading</div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Latest Trade Decisions -->
+        <div class="bg-term-panel border border-term-border term-glow">
+            <div class="px-4 py-3 border-b border-term-border flex items-center justify-between">
+                <span class="text-xs text-term-amber text-glow-amber uppercase tracking-wider">Latest Decisions</span>
+                <a href="/trades" class="text-[0.6rem] text-term-dim hover:text-term-green transition-colors">[view all]</a>
+            </div>
+            <div class="p-3">
+                <template x-if="recommendations.length > 0">
+                    <div class="space-y-2">
+                        <template x-for="rec in recommendations.slice(0, 5)" :key="rec.id">
+                            <div class="p-2 border border-term-border text-xs">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2">
+                                        <span class="px-1.5 py-0.5 text-[0.6rem] font-bold border"
+                                              :class="rec.action === 'BUY' ? 'border-term-green text-term-green' : rec.action === 'SELL' ? 'border-term-red text-term-red' : 'border-term-dim text-term-dim'"
+                                              x-text="rec.action"></span>
+                                        <span class="text-term-bright font-semibold" x-text="rec.ticker"></span>
+                                        <span class="text-term-dim text-[0.6rem]" x-text="rec.position_type"></span>
+                                    </div>
+                                    <span class="text-[0.6rem] px-1.5 py-0.5 border"
+                                          :class="rec.status === 'executed' ? 'border-term-green text-term-green' : rec.status === 'blocked' ? 'border-term-red text-term-red' : 'border-term-amber text-term-amber'"
+                                          x-text="rec.status"></span>
+                                </div>
+                                <p class="text-[0.6rem] text-term-dim mt-1.5 line-clamp-2" x-text="rec.reasoning"></p>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+                <template x-if="recommendations.length === 0">
+                    <div class="text-center py-8 text-term-dim text-xs">
+                        <div>no decisions yet</div>
+                        <div class="text-[0.6rem] mt-1">run analysis to start autonomous trading</div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <!-- Equity Curve -->
+    <div class="bg-term-panel border border-term-border term-glow mt-4">
+        <div class="px-4 py-3 border-b border-term-border">
+            <span class="text-xs text-term-cyan text-glow-cyan uppercase tracking-wider">Equity Curve</span>
+        </div>
+        <div class="p-4">
+            <canvas id="equityChart" height="100"></canvas>
+        </div>
+    </div>
+
+    <!-- Team Status -->
+    <div class="bg-term-panel border border-term-border term-glow mt-4">
+        <div class="px-4 py-3 border-b border-term-border">
+            <span class="text-xs text-term-green text-glow uppercase tracking-wider">Team Status</span>
+        </div>
+        <div class="p-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="border border-term-border p-3">
+                <div class="text-[0.6rem] text-term-amber uppercase tracking-wider">CIO</div>
+                <div class="text-xs text-term-bright mt-1">Chief Investment Officer</div>
+                <div class="text-[0.6rem] text-term-dim mt-0.5">final decisions, portfolio strategy</div>
+                <div class="flex items-center gap-1 mt-2"><span class="w-1 h-1 rounded-full bg-term-green"></span><span class="text-[0.6rem] text-term-greenDim">READY</span></div>
+            </div>
+            <div class="border border-term-border p-3">
+                <div class="text-[0.6rem] text-term-cyan uppercase tracking-wider">QUANT</div>
+                <div class="text-xs text-term-bright mt-1">Lead Quant Analyst</div>
+                <div class="text-[0.6rem] text-term-dim mt-0.5">technical signals, options pricing</div>
+                <div class="flex items-center gap-1 mt-2"><span class="w-1 h-1 rounded-full bg-term-green"></span><span class="text-[0.6rem] text-term-greenDim">READY</span></div>
+            </div>
+            <div class="border border-term-border p-3">
+                <div class="text-[0.6rem] text-term-red uppercase tracking-wider">RISK</div>
+                <div class="text-xs text-term-bright mt-1">Chief Risk Officer</div>
+                <div class="text-[0.6rem] text-term-dim mt-0.5">position limits, drawdown control</div>
+                <div class="flex items-center gap-1 mt-2"><span class="w-1 h-1 rounded-full bg-term-green"></span><span class="text-[0.6rem] text-term-greenDim">READY</span></div>
+            </div>
+            <div class="border border-term-border p-3">
+                <div class="text-[0.6rem] text-term-amber uppercase tracking-wider">MACRO</div>
+                <div class="text-xs text-term-bright mt-1">Macro Strategist</div>
+                <div class="text-[0.6rem] text-term-dim mt-0.5">market regime, sector rotation</div>
+                <div class="flex items-center gap-1 mt-2"><span class="w-1 h-1 rounded-full bg-term-green"></span><span class="text-[0.6rem] text-term-greenDim">READY</span></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function dashboardApp() {
+    return {
+        portfolio: { total_value: 10000, cash: 10000, unrealized_pnl: 0, total_return_pct: 0, positions: [] },
+        recommendations: [],
+        generating: false,
+        equityChart: null,
+
+        async init() {
+            await this.refresh();
+            setInterval(() => this.refresh(), 30000);
+        },
+
+        async refresh() {
+            try {
+                const [pRes, rRes] = await Promise.all([
+                    fetch('/api/portfolio'),
+                    fetch('/api/recommendations?limit=10'),
+                ]);
+                if (pRes.ok) this.portfolio = await pRes.json();
+                if (rRes.ok) this.recommendations = await rRes.json();
+                this.updateChart();
+            } catch (e) { console.error(e); }
+        },
+
+        async runAnalysis() {
+            this.generating = true;
+            try {
+                await fetch('/api/recommendations/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tickers: null }),
+                });
+                const poll = setInterval(async () => {
+                    const res = await fetch('/api/recommendations?limit=1');
+                    const recs = await res.json();
+                    if (recs.length > 0 && recs[0].created_at !== (this.recommendations[0]?.created_at)) {
+                        clearInterval(poll);
+                        this.generating = false;
+                        await this.refresh();
+                    }
+                }, 5000);
+                setTimeout(() => { clearInterval(poll); this.generating = false; }, 300000);
+            } catch (e) { console.error(e); this.generating = false; }
+        },
+
+        async updateChart() {
+            const res = await fetch('/api/portfolio/history');
+            if (!res.ok) return;
+            const history = await res.json();
+            if (history.length === 0) return;
+
+            const ctx = document.getElementById('equityChart');
+            if (!ctx) return;
+            if (this.equityChart) this.equityChart.destroy();
+
+            this.equityChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: history.map(h => h.timestamp.split('T')[0]),
+                    datasets: [{
+                        label: 'Portfolio',
+                        data: history.map(h => h.total_value),
+                        borderColor: '#00ff41',
+                        backgroundColor: 'rgba(0, 255, 65, 0.05)',
+                        fill: true,
+                        tension: 0.3,
+                        borderWidth: 1.5,
+                        pointRadius: 0,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#3a4a5c', font: { family: 'JetBrains Mono', size: 9 } }, grid: { color: '#1b2838' } },
+                        y: { ticks: { color: '#3a4a5c', font: { family: 'JetBrains Mono', size: 9 }, callback: v => '$' + v.toLocaleString() }, grid: { color: '#1b2838' } },
+                    }
+                }
+            });
+        },
+
+        formatNumber(n) { return (n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
+        formatPct(n) { return (n >= 0 ? '+' : '') + (n || 0).toFixed(2) + '%'; },
+    };
+}
+</script>
+{% endblock %}

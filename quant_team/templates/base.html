@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}QUANT_TEAM{% endblock %} // terminal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                fontFamily: { mono: ['"JetBrains Mono"', 'monospace'] },
+                extend: {
+                    colors: {
+                        term: {
+                            bg: '#0a0e14',
+                            panel: '#0d1117',
+                            border: '#1b2838',
+                            green: '#00ff41',
+                            greenDim: '#00cc33',
+                            greenMuted: '#0a3d1a',
+                            amber: '#ffb000',
+                            amberDim: '#cc8c00',
+                            amberMuted: '#3d2e00',
+                            red: '#ff3333',
+                            redDim: '#cc2929',
+                            redMuted: '#3d0a0a',
+                            cyan: '#00d4ff',
+                            cyanDim: '#00a8cc',
+                            blue: '#4488ff',
+                            dim: '#3a4a5c',
+                            text: '#8b9bb4',
+                            bright: '#c5d0dc',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * { font-family: 'JetBrains Mono', monospace; }
+        [x-cloak] { display: none !important; }
+
+        body {
+            background: #0a0e14;
+            color: #8b9bb4;
+        }
+
+        /* Scanline overlay */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 255, 65, 0.015) 2px,
+                rgba(0, 255, 65, 0.015) 4px
+            );
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* CRT glow on panels */
+        .term-glow {
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.03), inset 0 0 15px rgba(0, 255, 65, 0.01);
+        }
+
+        /* Blinking cursor */
+        .cursor-blink::after {
+            content: '█';
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* Terminal text glow */
+        .text-glow { text-shadow: 0 0 8px rgba(0, 255, 65, 0.4); }
+        .text-glow-amber { text-shadow: 0 0 8px rgba(255, 176, 0, 0.4); }
+        .text-glow-red { text-shadow: 0 0 8px rgba(255, 51, 51, 0.3); }
+        .text-glow-cyan { text-shadow: 0 0 8px rgba(0, 212, 255, 0.3); }
+
+        /* Loading spinner - terminal style */
+        .term-spinner { display: inline-block; animation: term-spin 0.8s steps(8) infinite; }
+        @keyframes term-spin {
+            0% { content: '|'; } 12.5% { content: '/'; } 25% { content: '-'; } 37.5% { content: '\\'; }
+            50% { content: '|'; } 62.5% { content: '/'; } 75% { content: '-'; } 87.5% { content: '\\'; }
+        }
+
+        /* Nav active state */
+        .nav-active { border-left: 2px solid #00ff41; background: rgba(0, 255, 65, 0.05); color: #00ff41; }
+        .nav-link:hover { background: rgba(0, 255, 65, 0.05); color: #00ff41; }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0a0e14; }
+        ::-webkit-scrollbar-thumb { background: #1b2838; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #2a3a4c; }
+
+        /* Table rows */
+        .term-row:hover { background: rgba(0, 255, 65, 0.03); }
+
+        /* ASCII art sizing */
+        .ascii-art { font-size: 0.55rem; line-height: 1.1; letter-spacing: 0.05em; }
+        @media (min-width: 768px) { .ascii-art { font-size: 0.7rem; } }
+
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="h-full">
+    <div class="flex h-full">
+        <!-- Sidebar -->
+        <nav class="w-60 bg-term-panel border-r border-term-border flex flex-col flex-shrink-0">
+            <!-- ASCII Logo -->
+            <div class="p-4 border-b border-term-border">
+                <pre class="ascii-art text-term-green text-glow select-none text-center">
+ ██████  ██    ██  █████  ███    ██ ████████
+██    ██ ██    ██ ██   ██ ████   ██    ██
+██    ██ ██    ██ ███████ ██ ██  ██    ██
+██ ▄▄ ██ ██    ██ ██   ██ ██  ██ ██    ██
+ ██████   ██████  ██   ██ ██   ████    ██
+    ▀▀
+        ████████ ███████  █████  ███    ███
+           ██    ██      ██   ██ ████  ████
+           ██    █████   ███████ ██ ████ ██
+           ██    ██      ██   ██ ██  ██  ██
+           ██    ███████ ██   ██ ██      ██</pre>
+                <div class="text-center mt-2">
+                    <span class="text-[0.6rem] text-term-dim">AI-Powered Trading Desk</span>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="flex-1 py-2">
+                <div class="px-3 py-2 text-[0.6rem] text-term-dim uppercase tracking-widest">Navigation</div>
+                <a href="/" class="nav-link flex items-center px-4 py-2.5 text-xs transition-colors border-l-2 border-transparent {% block nav_dashboard %}{% endblock %}">
+                    <span class="text-term-dim mr-3">&gt;</span>
+                    <span>dashboard</span>
+                </a>
+                <a href="/trades" class="nav-link flex items-center px-4 py-2.5 text-xs transition-colors border-l-2 border-transparent {% block nav_trades %}{% endblock %}">
+                    <span class="text-term-dim mr-3">&gt;</span>
+                    <span>trade_log</span>
+                </a>
+                <a href="/portfolio" class="nav-link flex items-center px-4 py-2.5 text-xs transition-colors border-l-2 border-transparent {% block nav_portfolio %}{% endblock %}">
+                    <span class="text-term-dim mr-3">&gt;</span>
+                    <span>portfolio</span>
+                </a>
+                <a href="/analysis" class="nav-link flex items-center px-4 py-2.5 text-xs transition-colors border-l-2 border-transparent {% block nav_analysis %}{% endblock %}">
+                    <span class="text-term-dim mr-3">&gt;</span>
+                    <span>analysis</span>
+                </a>
+                <a href="/market" class="nav-link flex items-center px-4 py-2.5 text-xs transition-colors border-l-2 border-transparent {% block nav_market %}{% endblock %}">
+                    <span class="text-term-dim mr-3">&gt;</span>
+                    <span>market_data</span>
+                </a>
+            </div>
+
+            <!-- Status Bar -->
+            <div class="p-3 border-t border-term-border text-[0.6rem]" x-data="pdtWidget()" x-init="init()">
+                <div class="flex items-center gap-2 text-term-dim">
+                    <span class="w-1.5 h-1.5 rounded-full bg-term-green animate-pulse"></span>
+                    <span>AUTONOMOUS MODE</span>
+                </div>
+                <div class="text-term-dim mt-1">
+                    PDT: <span :class="pdt.pdt_restricted ? 'text-term-red' : 'text-term-green'" x-text="pdt.day_trades_used + '/' + pdt.max_day_trades"></span> day trades
+                </div>
+                <div class="flex items-center justify-between mt-1">
+                    <span class="text-term-dim">claude ai</span>
+                    <a href="/logout" class="text-term-dim hover:text-term-red transition-colors">[logout]</a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto">
+            <div class="p-6">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+    <script>
+    function pdtWidget() {
+        return {
+            pdt: { day_trades_used: 0, day_trades_remaining: 3, max_day_trades: 3, pdt_restricted: false },
+            async init() {
+                try {
+                    const res = await fetch('/api/recommendations/pdt-status');
+                    if (res.ok) this.pdt = await res.json();
+                } catch(e) {}
+                setInterval(async () => {
+                    try { const r = await fetch('/api/recommendations/pdt-status'); if(r.ok) this.pdt = await r.json(); } catch(e) {}
+                }, 60000);
+            }
+        };
+    }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

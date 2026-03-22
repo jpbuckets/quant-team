@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}TRADE_LOG{% endblock %}
+{% block nav_trades %}nav-active{% endblock %}
+
+{% block content %}
+<div x-data="tradesApp()" x-init="init()">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h2 class="text-sm text-term-green text-glow uppercase tracking-widest">// Trade Log</h2>
+            <p class="text-[0.6rem] text-term-dim mt-1">autonomous trade decisions & performance tracking</p>
+        </div>
+        <select x-model="filter" @change="loadRecs()" class="bg-term-panel border border-term-border text-xs text-term-text px-3 py-1.5 focus:border-term-green focus:outline-none">
+            <option value="">all_status</option>
+            <option value="executed">executed</option>
+            <option value="blocked">blocked</option>
+        </select>
+    </div>
+
+    <!-- Performance Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <div class="bg-term-panel border border-term-border p-3 term-glow">
+            <div class="text-[0.6rem] text-term-dim uppercase tracking-wider">Closed Trades</div>
+            <div class="text-base text-term-bright mt-1 font-semibold" x-text="perf.total">0</div>
+        </div>
+        <div class="bg-term-panel border border-term-border p-3 term-glow">
+            <div class="text-[0.6rem] text-term-dim uppercase tracking-wider">Win Rate</div>
+            <div class="text-base text-term-green text-glow mt-1 font-semibold" x-text="perf.win_rate.toFixed(1) + '%'">0%</div>
+        </div>
+        <div class="bg-term-panel border border-term-border p-3 term-glow">
+            <div class="text-[0.6rem] text-term-dim uppercase tracking-wider">Total P&L</div>
+            <div class="text-base mt-1 font-semibold" :class="perf.total_pnl >= 0 ? 'text-term-green text-glow' : 'text-term-red text-glow-red'"
+                 x-text="'$' + (perf.total_pnl || 0).toFixed(2)">$0.00</div>
+        </div>
+        <div class="bg-term-panel border border-term-border p-3 term-glow">
+            <div class="text-[0.6rem] text-term-dim uppercase tracking-wider">Avg P&L</div>
+            <div class="text-base mt-1 font-semibold" :class="(perf.avg_pnl || 0) >= 0 ? 'text-term-green text-glow' : 'text-term-red text-glow-red'"
+                 x-text="'$' + (perf.avg_pnl || 0).toFixed(2)">$0.00</div>
+        </div>
+    </div>
+
+    <!-- Decisions Table -->
+    <div class="bg-term-panel border border-term-border term-glow">
+        <div class="px-4 py-3 border-b border-term-border">
+            <span class="text-xs text-term-amber text-glow-amber uppercase tracking-wider">Decision Log</span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-xs" x-show="recs.length > 0">
+                <thead class="text-term-dim border-b border-term-border text-[0.6rem] uppercase tracking-wider">
+                    <tr>
+                        <th class="text-left px-4 py-2">Date</th>
+                        <th class="text-left px-4 py-2">Action</th>
+                        <th class="text-left px-4 py-2">Ticker</th>
+                        <th class="text-left px-4 py-2">Type</th>
+                        <th class="text-left px-4 py-2">Details</th>
+                        <th class="text-left px-4 py-2">Conf</th>
+                        <th class="text-left px-4 py-2">Status</th>
+                        <th class="text-right px-4 py-2">P&L</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="rec in recs" :key="rec.id">
+                        <tr class="border-b border-term-border/50 term-row">
+                            <td class="px-4 py-2 text-term-dim" x-text="rec.created_at.split('T')[0]"></td>
+                            <td class="px-4 py-2">
+                                <span class="px-1.5 py-0.5 text-[0.6rem] font-bold border"
+                                      :class="rec.action === 'BUY' ? 'border-term-green text-term-green' : rec.action === 'SELL' ? 'border-term-red text-term-red' : 'border-term-dim text-term-dim'"
+                                      x-text="rec.action"></span>
+                            </td>
+                            <td class="px-4 py-2 text-term-bright font-semibold" x-text="rec.ticker"></td>
+                            <td class="px-4 py-2 text-term-dim" x-text="rec.position_type"></td>
+                            <td class="px-4 py-2 text-term-dim">
+                                <template x-if="rec.position_type === 'shares'">
+                                    <span x-text="(rec.quantity || '?') + ' shares'"></span>
+                                </template>
+                                <template x-if="rec.position_type !== 'shares'">
+                                    <span x-text="(rec.quantity || 1) + 'x $' + (rec.strike || '?') + ' ' + (rec.expiry || '')"></span>
+                                </template>
+                            </td>
+                            <td class="px-4 py-2">
+                                <span class="text-[0.6rem]"
+                                      :class="rec.confidence === 'HIGH' ? 'text-term-green' : rec.confidence === 'MEDIUM' ? 'text-term-amber' : 'text-term-dim'"
+                                      x-text="rec.confidence || '-'"></span>
+                            </td>
+                            <td class="px-4 py-2">
+                                <span class="text-[0.6rem]"
+                                      :class="{
+                                          'text-term-green': rec.status === 'executed',
+                                          'text-term-red': rec.status === 'blocked',
+                                          'text-term-amber': rec.status === 'pending'
+                                      }"
+                                      x-text="rec.status"></span>
+                            </td>
+                            <td class="px-4 py-2 text-right">
+                                <template x-if="rec.outcome_pnl !== null && rec.outcome_pnl !== undefined">
+                                    <span :class="rec.outcome_pnl >= 0 ? 'text-term-green' : 'text-term-red'"
+                                          x-text="'$' + rec.outcome_pnl.toFixed(2)"></span>
+                                </template>
+                                <template x-if="rec.outcome_pnl === null || rec.outcome_pnl === undefined">
+                                    <span class="text-term-dim">--</span>
+                                </template>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+        <p x-show="recs.length === 0" class="text-term-dim text-center py-8 text-xs">no decisions logged</p>
+    </div>
+
+    <!-- Reasoning -->
+    <template x-if="recs.length > 0">
+        <div class="bg-term-panel border border-term-border term-glow mt-4">
+            <div class="px-4 py-3 border-b border-term-border">
+                <span class="text-xs text-term-cyan text-glow-cyan uppercase tracking-wider">Decision Reasoning</span>
+            </div>
+            <div class="p-4 space-y-2">
+                <template x-for="rec in recs.slice(0, 5)" :key="'r-' + rec.id">
+                    <div class="p-2 border border-term-border text-xs">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="text-term-bright font-semibold" x-text="rec.ticker"></span>
+                            <span class="text-term-dim text-[0.6rem]" x-text="rec.action + ' ' + rec.position_type"></span>
+                            <span class="text-[0.6rem]" :class="rec.status === 'executed' ? 'text-term-green' : 'text-term-red'" x-text="rec.status"></span>
+                        </div>
+                        <p class="text-[0.65rem] text-term-text leading-relaxed" x-text="rec.reasoning"></p>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </template>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function tradesApp() {
+    return {
+        recs: [],
+        perf: { total: 0, wins: 0, losses: 0, win_rate: 0, total_pnl: 0, avg_pnl: 0 },
+        filter: '',
+
+        async init() { await this.loadRecs(); await this.loadPerf(); },
+
+        async loadRecs() {
+            const url = '/api/recommendations?limit=50' + (this.filter ? '&status=' + this.filter : '');
+            const res = await fetch(url);
+            if (res.ok) this.recs = await res.json();
+        },
+
+        async loadPerf() {
+            const res = await fetch('/api/recommendations/performance');
+            if (res.ok) this.perf = await res.json();
+        },
+    };
+}
+</script>
+{% endblock %}

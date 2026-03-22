@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}PORTFOLIO{% endblock %}
+{% block nav_portfolio %}nav-active{% endblock %}
+
+{% block content %}
+<div x-data="portfolioApp()" x-init="init()">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h2 class="text-sm text-term-green text-glow uppercase tracking-widest">// Portfolio</h2>
+            <p class="text-[0.6rem] text-term-dim mt-1">positions, trades & performance tracking</p>
+        </div>
+        <div class="flex gap-2">
+            <button @click="takeSnapshot()" class="px-3 py-1.5 border border-term-border text-xs text-term-dim hover:border-term-cyan hover:text-term-cyan transition-colors">
+                [SNAPSHOT]
+            </button>
+            <button @click="confirmReset = true" class="px-3 py-1.5 border border-term-border text-xs text-term-dim hover:border-term-red hover:text-term-red transition-colors">
+                [RESET]
+            </button>
+        </div>
+    </div>
+
+    <!-- Reset Modal -->
+    <div x-show="confirmReset" x-cloak class="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+        <div class="bg-term-panel border border-term-red p-5 max-w-sm">
+            <div class="text-xs text-term-red font-bold uppercase tracking-wider mb-2">!! WARNING !!</div>
+            <p class="text-xs text-term-text mb-4">Reset portfolio to $10,000? All positions will be closed.</p>
+            <div class="flex gap-2">
+                <button @click="resetPortfolio()" class="px-3 py-1.5 border border-term-red text-term-red text-xs hover:bg-term-redMuted">[CONFIRM RESET]</button>
+                <button @click="confirmReset = false" class="px-3 py-1.5 border border-term-border text-term-dim text-xs hover:text-term-bright">[CANCEL]</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <div class="bg-term-panel border border-term-border p-3 term-glow">
+            <div class="text-[0.6rem] text-term-dim uppercase tracking-wider">Total Value</div>
+            <div class="text-base text-term-green text-glow mt-1 font-semibold" x-text="'$' + fmt(portfolio.total_value)">$10,000</div>
+        </div>
+        <div class="bg-term-panel border border-term-border p-3 term-glow">
+            <div class="text-[0.6rem] text-term-dim uppercase tracking-wider">Cash</div>
+            <div class="text-base text-term-amber text-glow-amber mt-1 font-semibold" x-text="'$' + fmt(portfolio.cash)">$10,000</div>
+        </div>
+        <div class="bg-term-panel border border-term-border p-3 term-glow">
+            <div class="text-[0.6rem] text-term-dim uppercase tracking-wider">Realized P&L</div>
+            <div class="text-base mt-1 font-semibold" :class="portfolio.realized_pnl >= 0 ? 'text-term-green text-glow' : 'text-term-red text-glow-red'"
+                 x-text="'$' + fmt(portfolio.realized_pnl)">$0.00</div>
+        </div>
+        <div class="bg-term-panel border border-term-border p-3 term-glow">
+            <div class="text-[0.6rem] text-term-dim uppercase tracking-wider">Drawdown</div>
+            <div class="text-base text-term-amber text-glow-amber mt-1 font-semibold" x-text="(portfolio.drawdown_pct || 0).toFixed(2) + '%'">0.00%</div>
+        </div>
+    </div>
+
+    <!-- Positions -->
+    <div class="bg-term-panel border border-term-border term-glow mb-4">
+        <div class="px-4 py-3 border-b border-term-border flex items-center justify-between">
+            <span class="text-xs text-term-cyan text-glow-cyan uppercase tracking-wider">Open Positions</span>
+            <span class="text-[0.6rem] text-term-dim" x-text="(portfolio.positions?.length || 0) + ' active'"></span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-xs" x-show="portfolio.positions && portfolio.positions.length > 0">
+                <thead class="text-term-dim border-b border-term-border text-[0.6rem] uppercase tracking-wider">
+                    <tr>
+                        <th class="text-left px-4 py-2">Ticker</th>
+                        <th class="text-left px-4 py-2">Type</th>
+                        <th class="text-right px-4 py-2">Qty</th>
+                        <th class="text-right px-4 py-2">Entry</th>
+                        <th class="text-right px-4 py-2">Current</th>
+                        <th class="text-right px-4 py-2">Value</th>
+                        <th class="text-right px-4 py-2">P&L</th>
+                        <th class="text-right px-4 py-2">P&L%</th>
+                        <th class="text-left px-4 py-2">Ops</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="pos in portfolio.positions" :key="pos.id">
+                        <tr class="border-b border-term-border/50 term-row">
+                            <td class="px-4 py-2 text-term-bright font-semibold" x-text="pos.ticker"></td>
+                            <td class="px-4 py-2 text-term-dim" x-text="pos.position_type"></td>
+                            <td class="px-4 py-2 text-right text-term-text" x-text="pos.quantity"></td>
+                            <td class="px-4 py-2 text-right text-term-dim" x-text="'$' + pos.entry_price.toFixed(2)"></td>
+                            <td class="px-4 py-2 text-right text-term-bright" x-text="'$' + pos.current_price.toFixed(2)"></td>
+                            <td class="px-4 py-2 text-right text-term-text" x-text="'$' + pos.market_value.toFixed(2)"></td>
+                            <td class="px-4 py-2 text-right" :class="pos.unrealized_pnl >= 0 ? 'text-term-green' : 'text-term-red'"
+                                x-text="(pos.unrealized_pnl >= 0 ? '+' : '') + '$' + pos.unrealized_pnl.toFixed(2)"></td>
+                            <td class="px-4 py-2 text-right" :class="pos.pnl_pct >= 0 ? 'text-term-green' : 'text-term-red'"
+                                x-text="(pos.pnl_pct >= 0 ? '+' : '') + pos.pnl_pct.toFixed(1) + '%'"></td>
+                            <td class="px-4 py-2">
+                                <button @click="closePosition(pos.id)" class="text-[0.6rem] px-1.5 py-0.5 border border-term-red text-term-red hover:bg-term-redMuted transition-colors">[CLOSE]</button>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+        <p x-show="!portfolio.positions || portfolio.positions.length === 0" class="text-term-dim text-center py-8 text-xs">no open positions</p>
+    </div>
+
+    <!-- Trade History -->
+    <div class="bg-term-panel border border-term-border term-glow">
+        <div class="px-4 py-3 border-b border-term-border">
+            <span class="text-xs text-term-amber text-glow-amber uppercase tracking-wider">Trade Log</span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-xs" x-show="trades.length > 0">
+                <thead class="text-term-dim border-b border-term-border text-[0.6rem] uppercase tracking-wider">
+                    <tr>
+                        <th class="text-left px-4 py-2">Date</th>
+                        <th class="text-left px-4 py-2">Action</th>
+                        <th class="text-left px-4 py-2">Ticker</th>
+                        <th class="text-left px-4 py-2">Type</th>
+                        <th class="text-right px-4 py-2">Price</th>
+                        <th class="text-right px-4 py-2">Qty</th>
+                        <th class="text-right px-4 py-2">Notional</th>
+                        <th class="text-right px-4 py-2">P&L</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="t in trades" :key="t.id">
+                        <tr class="border-b border-term-border/50 term-row">
+                            <td class="px-4 py-2 text-term-dim" x-text="t.timestamp.split('T')[0]"></td>
+                            <td class="px-4 py-2">
+                                <span :class="t.action === 'BUY' ? 'text-term-green' : 'text-term-red'" x-text="t.action"></span>
+                            </td>
+                            <td class="px-4 py-2 text-term-bright font-semibold" x-text="t.ticker"></td>
+                            <td class="px-4 py-2 text-term-dim" x-text="t.position_type"></td>
+                            <td class="px-4 py-2 text-right text-term-text" x-text="'$' + t.price.toFixed(2)"></td>
+                            <td class="px-4 py-2 text-right text-term-text" x-text="t.quantity"></td>
+                            <td class="px-4 py-2 text-right text-term-text" x-text="'$' + t.notional.toFixed(2)"></td>
+                            <td class="px-4 py-2 text-right" :class="t.pnl >= 0 ? 'text-term-green' : 'text-term-red'"
+                                x-text="(t.pnl >= 0 ? '+' : '') + '$' + t.pnl.toFixed(2)"></td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+        <p x-show="trades.length === 0" class="text-term-dim text-center py-8 text-xs">no trades executed</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function portfolioApp() {
+    return {
+        portfolio: { total_value: 10000, cash: 10000, realized_pnl: 0, drawdown_pct: 0, positions: [] },
+        trades: [],
+        confirmReset: false,
+
+        async init() { await this.refresh(); },
+
+        async refresh() {
+            const [pRes, tRes] = await Promise.all([fetch('/api/portfolio'), fetch('/api/portfolio/trades')]);
+            if (pRes.ok) this.portfolio = await pRes.json();
+            if (tRes.ok) this.trades = await tRes.json();
+        },
+
+        async closePosition(id) { await fetch(`/api/portfolio/positions/${id}/close`, { method: 'POST' }); await this.refresh(); },
+        async resetPortfolio() { await fetch('/api/portfolio/reset', { method: 'POST' }); this.confirmReset = false; await this.refresh(); },
+        async takeSnapshot() { await fetch('/api/portfolio/snapshot', { method: 'POST' }); },
+
+        fmt(n) { return (n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
+    };
+}
+</script>
+{% endblock %}

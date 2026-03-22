@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}ANALYSIS{% endblock %}
+{% block nav_analysis %}nav-active{% endblock %}
+
+{% block content %}
+<div x-data="analysisApp()" x-init="init()">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h2 class="text-sm text-term-green text-glow uppercase tracking-widest">// Analysis</h2>
+            <p class="text-[0.6rem] text-term-dim mt-1">ai agent round-table discussions & decisions</p>
+        </div>
+        <div class="flex gap-2 items-center">
+            <input x-model="customTickers" type="text" placeholder="AAPL,MSFT,NVDA..."
+                   class="bg-term-panel border border-term-border text-xs text-term-text px-3 py-1.5 w-56 focus:border-term-green focus:outline-none placeholder-term-dim"
+                   @keydown.enter="runAnalysis()">
+            <button @click="runAnalysis()" :disabled="generating"
+                    class="px-4 py-1.5 border border-term-green text-term-green text-xs hover:bg-term-greenMuted disabled:border-term-dim disabled:text-term-dim transition-colors whitespace-nowrap">
+                <span x-text="generating ? '[...] RUNNING' : '[ ANALYZE ]'"></span>
+            </button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <!-- Session List -->
+        <div class="lg:col-span-1">
+            <div class="bg-term-panel border border-term-border term-glow">
+                <div class="px-4 py-3 border-b border-term-border">
+                    <span class="text-xs text-term-amber text-glow-amber uppercase tracking-wider">Sessions</span>
+                </div>
+                <div class="divide-y divide-term-border/50 max-h-[70vh] overflow-y-auto">
+                    <template x-for="s in sessions" :key="s.id">
+                        <button @click="loadSession(s.id)"
+                                class="w-full text-left px-4 py-3 text-xs hover:bg-term-greenMuted/30 transition-colors"
+                                :class="selectedSession?.id === s.id ? 'bg-term-greenMuted/20 border-l-2 border-term-green' : 'border-l-2 border-transparent'">
+                            <div class="text-term-bright" x-text="s.timestamp.replace('T', ' ').slice(0, 16)"></div>
+                            <div class="text-[0.6rem] text-term-dim mt-0.5" x-text="s.recommendations_count + ' signals generated'"></div>
+                        </button>
+                    </template>
+                    <p x-show="sessions.length === 0" class="text-term-dim text-center py-8 text-xs">
+                        no sessions yet
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Session Detail -->
+        <div class="lg:col-span-2">
+            <template x-if="selectedSession">
+                <div class="space-y-3">
+                    <!-- Macro -->
+                    <div class="bg-term-panel border border-term-border term-glow" x-show="selectedSession.macro_analysis">
+                        <div class="px-4 py-2 border-b border-term-border flex items-center gap-2">
+                            <span class="w-2 h-2 bg-term-amber"></span>
+                            <span class="text-xs text-term-amber text-glow-amber uppercase tracking-wider">MACRO // Senior Macro Strategist</span>
+                        </div>
+                        <div class="p-4 text-xs text-term-text whitespace-pre-wrap max-h-80 overflow-y-auto leading-relaxed" x-text="selectedSession.macro_analysis"></div>
+                    </div>
+
+                    <!-- Quant -->
+                    <div class="bg-term-panel border border-term-border term-glow" x-show="selectedSession.quant_analysis">
+                        <div class="px-4 py-2 border-b border-term-border flex items-center gap-2">
+                            <span class="w-2 h-2 bg-term-cyan"></span>
+                            <span class="text-xs text-term-cyan text-glow-cyan uppercase tracking-wider">QUANT // Lead Quantitative Analyst</span>
+                        </div>
+                        <div class="p-4 text-xs text-term-text whitespace-pre-wrap max-h-80 overflow-y-auto leading-relaxed" x-text="selectedSession.quant_analysis"></div>
+                    </div>
+
+                    <!-- Risk -->
+                    <div class="bg-term-panel border border-term-border term-glow" x-show="selectedSession.risk_analysis">
+                        <div class="px-4 py-2 border-b border-term-border flex items-center gap-2">
+                            <span class="w-2 h-2 bg-term-red"></span>
+                            <span class="text-xs text-term-red text-glow-red uppercase tracking-wider">RISK // Chief Risk Officer</span>
+                        </div>
+                        <div class="p-4 text-xs text-term-text whitespace-pre-wrap max-h-80 overflow-y-auto leading-relaxed" x-text="selectedSession.risk_analysis"></div>
+                    </div>
+
+                    <!-- CIO -->
+                    <div class="bg-term-panel border border-term-green/30 term-glow" x-show="selectedSession.cio_decision">
+                        <div class="px-4 py-2 border-b border-term-green/30 flex items-center gap-2">
+                            <span class="w-2 h-2 bg-term-green"></span>
+                            <span class="text-xs text-term-green text-glow uppercase tracking-wider">CIO // Final Decision</span>
+                        </div>
+                        <div class="p-4 text-xs text-term-text whitespace-pre-wrap max-h-96 overflow-y-auto leading-relaxed" x-text="selectedSession.cio_decision"></div>
+                    </div>
+                </div>
+            </template>
+            <template x-if="!selectedSession">
+                <div class="bg-term-panel border border-term-border term-glow p-12 text-center">
+                    <div class="text-term-dim text-xs">select a session to view the round-table transcript</div>
+                    <div class="text-term-dim text-[0.6rem] mt-1">or run a new analysis with the button above</div>
+                </div>
+            </template>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function analysisApp() {
+    return {
+        sessions: [],
+        selectedSession: null,
+        customTickers: '',
+        generating: false,
+
+        async init() { await this.loadSessions(); },
+
+        async loadSessions() {
+            const res = await fetch('/api/sessions');
+            if (res.ok) this.sessions = await res.json();
+        },
+
+        async loadSession(id) {
+            const res = await fetch(`/api/sessions/${id}`);
+            if (res.ok) this.selectedSession = await res.json();
+        },
+
+        async runAnalysis() {
+            this.generating = true;
+            const tickers = this.customTickers
+                ? this.customTickers.split(',').map(t => t.trim().toUpperCase()).filter(Boolean)
+                : null;
+
+            try {
+                await fetch('/api/recommendations/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tickers }),
+                });
+
+                const poll = setInterval(async () => {
+                    const res = await fetch('/api/sessions');
+                    const sessions = await res.json();
+                    if (sessions.length > this.sessions.length || (sessions[0]?.id !== this.sessions[0]?.id)) {
+                        clearInterval(poll);
+                        this.generating = false;
+                        this.sessions = sessions;
+                        if (sessions.length > 0) await this.loadSession(sessions[0].id);
+                    }
+                }, 5000);
+                setTimeout(() => { clearInterval(poll); this.generating = false; }, 300000);
+            } catch (e) { console.error(e); this.generating = false; }
+        },
+    };
+}
+</script>
+{% endblock %}

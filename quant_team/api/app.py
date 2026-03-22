@@ -27,21 +27,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 TEMPLATES_DIR = BASE_DIR / "templates"
 STATIC_DIR = BASE_DIR / "static"
 
-# Debug: log paths at import time
-logger.warning(f"BASE_DIR={BASE_DIR}, exists={BASE_DIR.exists()}")
-logger.warning(f"TEMPLATES_DIR={TEMPLATES_DIR}, exists={TEMPLATES_DIR.exists()}")
-logger.warning(f"STATIC_DIR={STATIC_DIR}, exists={STATIC_DIR.exists()}")
-if TEMPLATES_DIR.exists():
-    logger.warning(f"Templates: {list(TEMPLATES_DIR.iterdir())}")
-else:
-    # Fallback: try /app/quant_team paths
-    _alt = Path("/app/quant_team")
-    if (_alt / "templates").exists():
-        TEMPLATES_DIR = _alt / "templates"
-        STATIC_DIR = _alt / "static"
-        BASE_DIR = _alt
-        logger.warning(f"Using fallback paths: {TEMPLATES_DIR}")
-
 # Scheduler reference
 _scheduler = None
 
@@ -215,12 +200,7 @@ async def logout():
 async def dashboard_page(request: Request):
     if not _auth_required(request):
         return RedirectResponse("/login", status_code=302)
-    try:
-        return templates.TemplateResponse(request, "dashboard.html")
-    except Exception as e:
-        from fastapi.responses import PlainTextResponse
-        import traceback
-        return PlainTextResponse(f"Template error:\n{traceback.format_exc()}", status_code=500)
+    return templates.TemplateResponse(request, "dashboard.html")
 
 
 @app.get("/trades")
@@ -251,18 +231,4 @@ async def market_page(request: Request):
     return templates.TemplateResponse(request, "market.html")
 
 
-@app.get("/api/debug/paths")
-async def debug_paths():
-    """Temporary debug endpoint to diagnose template paths."""
-    import sys
-    return {
-        "base_dir": str(BASE_DIR),
-        "templates_dir": str(TEMPLATES_DIR),
-        "templates_exists": TEMPLATES_DIR.exists(),
-        "static_dir": str(STATIC_DIR),
-        "static_exists": STATIC_DIR.exists(),
-        "templates_files": [f.name for f in TEMPLATES_DIR.iterdir()] if TEMPLATES_DIR.exists() else [],
-        "cwd": str(Path.cwd()),
-        "file": str(Path(__file__).resolve()),
-        "python": sys.executable,
-    }
+

@@ -15,9 +15,35 @@
                    @keydown.enter="runAnalysis()">
             <button @click="runAnalysis()" :disabled="generating"
                     class="px-4 py-1.5 border border-term-green text-term-green text-xs hover:bg-term-greenMuted disabled:border-term-dim disabled:text-term-dim transition-colors whitespace-nowrap">
-                <span x-text="generating ? '[...] RUNNING' : '[ ANALYZE ]'"></span>
+                <span x-show="!generating">[ ANALYZE ]</span>
+                <span x-show="generating" x-text="'[' + progressStep + '/' + progressTotal + '] ' + progressLabel"></span>
             </button>
         </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div x-show="generating" class="mb-4 bg-term-panel border border-term-border p-4">
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-xs text-term-green text-glow uppercase tracking-wider" x-text="progressLabel"></span>
+            <span class="text-xs text-term-dim" x-text="progressStep + ' / ' + progressTotal"></span>
+        </div>
+        <div class="w-full h-1.5 bg-term-border overflow-hidden">
+            <div class="h-full bg-term-green transition-all duration-500 ease-out"
+                 :style="'width: ' + (progressTotal > 0 ? (progressStep / progressTotal * 100) : 0) + '%'"></div>
+        </div>
+        <div class="flex justify-between mt-2 text-[0.55rem] text-term-dim">
+            <span :class="progressStep >= 1 ? 'text-term-green' : ''">DATA</span>
+            <span :class="progressStep >= 2 ? 'text-term-amber' : ''">MACRO</span>
+            <span :class="progressStep >= 3 ? 'text-term-cyan' : ''">QUANT</span>
+            <span :class="progressStep >= 4 ? 'text-term-red' : ''">RISK</span>
+            <span :class="progressStep >= 5 ? 'text-term-green' : ''">CIO</span>
+            <span :class="progressStep >= 6 ? 'text-term-bright' : ''">EXEC</span>
+        </div>
+    </div>
+
+    <div x-show="error" class="mb-4 px-4 py-3 border border-term-red bg-term-red/10 text-term-red text-xs">
+        <span class="uppercase tracking-wider font-bold">Error:</span> <span x-text="error"></span>
+        <button @click="error = null" class="ml-2 text-term-dim hover:text-term-text">[dismiss]</button>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -103,6 +129,10 @@ function analysisApp() {
         selectedSession: null,
         customTickers: '',
         generating: false,
+        error: null,
+        progressLabel: 'Starting...',
+        progressStep: 0,
+        progressTotal: 6,
 
         async init() { await this.loadSessions(); },
 
@@ -118,29 +148,52 @@ function analysisApp() {
 
         async runAnalysis() {
             this.generating = true;
+            this.error = null;
             const tickers = this.customTickers
                 ? this.customTickers.split(',').map(t => t.trim().toUpperCase()).filter(Boolean)
                 : null;
 
             try {
-                await fetch('/api/recommendations/generate', {
+                const genRes = await fetch('/api/recommendations/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ tickers }),
                 });
+                if (!genRes.ok) {
+                    const err = await genRes.json();
+                    this.error = err.detail || 'Failed to start session';
+                    this.generating = false;
+                    return;
+                }
 
                 const poll = setInterval(async () => {
+                    // Check for errors first
+                    const statusRes = await fetch('/api/recommendations/status');
+                    const status = await statusRes.json();
+                    if (status.progress) {
+                        this.progressLabel = status.progress.step || 'Working...';
+                        this.progressStep = status.progress.step_num || 0;
+                        this.progressTotal = status.progress.total_steps || 6;
+                    }
+                    if (status.error) {
+                        clearInterval(poll);
+                        this.generating = false;
+                        this.error = status.error;
+                        return;
+                    }
+
+                    // Check for new sessions
                     const res = await fetch('/api/sessions');
                     const sessions = await res.json();
-                    if (sessions.length > this.sessions.length || (sessions[0]?.id !== this.sessions[0]?.id)) {
+                    if (!status.generating && (sessions.length > this.sessions.length || (sessions[0]?.id !== this.sessions[0]?.id))) {
                         clearInterval(poll);
                         this.generating = false;
                         this.sessions = sessions;
                         if (sessions.length > 0) await this.loadSession(sessions[0].id);
                     }
-                }, 5000);
+                }, 3000);
                 setTimeout(() => { clearInterval(poll); this.generating = false; }, 300000);
-            } catch (e) { console.error(e); this.generating = false; }
+            } catch (e) { console.error(e); this.error = e.message; this.generating = false; }
         },
     };
 }

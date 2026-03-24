@@ -21,7 +21,9 @@ from .auth import (
 )
 
 load_dotenv()
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 logger = logging.getLogger("quant_team")
+logger.setLevel(logging.DEBUG)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 TEMPLATES_DIR = BASE_DIR / "templates"

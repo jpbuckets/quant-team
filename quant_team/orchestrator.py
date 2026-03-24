@@ -42,12 +42,15 @@ class TradingDesk:
         self.portfolio = PortfolioManager(db, self.market)
 
     def run_trading_session(
-        self, tickers: list[str] | None = None, evolve_strategy: bool = False
+        self, tickers: list[str] | None = None, evolve_strategy: bool = False,
+        on_progress: callable | None = None,
     ) -> list[Recommendation]:
         """Run a full trading session: analyze → discuss → decide → execute."""
         tickers = tickers or self.tickers
+        _progress = on_progress or (lambda *a: None)
 
         # Step 1: Gather market data
+        _progress("Fetching market data & indicators", 1, 6)
         market_context_parts = [self.market.get_market_summary(tickers)]
 
         for ticker in tickers[:6]:
@@ -106,12 +109,13 @@ class TradingDesk:
         )
 
         agent_order = [
-            ("macro", self.macro_agent),
-            ("quant", self.quant_agent),
-            ("risk", self.risk_agent),
+            ("macro", self.macro_agent, "Macro Strategist analyzing"),
+            ("quant", self.quant_agent, "Quant Analyst crunching numbers"),
+            ("risk", self.risk_agent, "Risk Officer evaluating exposure"),
         ]
 
-        for key, agent in agent_order:
+        for i, (key, agent, label) in enumerate(agent_order):
+            _progress(label, 2 + i, 6)
             response = agent.analyze(
                 market_context=market_context,
                 discussion=discussion,
@@ -121,6 +125,7 @@ class TradingDesk:
             agent_analyses[key] = response
 
         # Step 3: CIO makes final decisions
+        _progress("CIO making final decisions", 5, 6)
         cio_response = self.cio_agent.analyze(
             market_context=market_context,
             discussion=discussion,
@@ -139,7 +144,8 @@ class TradingDesk:
         discussion.append(Message(role="CIO (Chief Investment Officer)", content=cio_response))
         agent_analyses["cio"] = cio_response
 
-        # Step 4: Save session
+        # Step 4: Save session & execute
+        _progress("Executing trades & saving session", 6, 6)
         session = AgentSession(
             tickers_analyzed=json.dumps(tickers),
             market_context_summary=market_context[:5000],

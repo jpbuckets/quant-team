@@ -59,7 +59,7 @@ Plans:
   1. Every team starts in paper mode — no real orders are sent unless live mode is explicitly enabled for that team
   2. Each paper trade creates a log entry showing symbol, side, quantity, and price that would have executed
   3. Toggling a team from paper to live (or back) takes effect on the next session without restarting the server
-  4. A stock team's execution is routed to the Alpaca-compatible paper executor; a crypto team's execution is routed to the Solana-compatible paper executor
+  4. Execution is routed through an ExecutionRouter that dispatches to the correct executor based on team configuration (unified PaperExecutor for all teams in v1; asset-class-specific live executors deferred to v2)
 **Plans:** 2 plans
 Plans:
 - [ ] 03-01-PLAN.md — Execution framework with PaperExecutor + trade logging (EXEC-01, EXEC-02)

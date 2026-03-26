@@ -38,10 +38,10 @@ Requirements for initial milestone. Each maps to roadmap phases.
 
 ### Dashboard & UI
 
-- [ ] **DASH-01**: User can select between teams from the main dashboard
-- [ ] **DASH-02**: Each team has its own portfolio view showing positions, P&L, and session history
-- [ ] **DASH-03**: Cross-team summary view shows aggregate portfolio across all teams
-- [ ] **DASH-04**: UI clearly indicates whether a team is in paper or live mode
+- [x] **DASH-01**: User can select between teams from the main dashboard
+- [x] **DASH-02**: Each team has its own portfolio view showing positions, P&L, and session history
+- [x] **DASH-03**: Cross-team summary view shows aggregate portfolio across all teams
+- [x] **DASH-04**: UI clearly indicates whether a team is in paper or live mode
 
 ## v2 Requirements
 
@@ -98,10 +98,10 @@ Deferred to future milestone. Tracked but not in current roadmap.
 | EXEC-02 | Phase 3 | Complete |
 | EXEC-03 | Phase 3 | Complete |
 | EXEC-04 | Phase 3 | Complete |
-| DASH-01 | Phase 4 | Pending |
-| DASH-02 | Phase 4 | Pending |
-| DASH-03 | Phase 4 | Pending |
-| DASH-04 | Phase 4 | Pending |
+| DASH-01 | Phase 4 | Complete |
+| DASH-02 | Phase 4 | Complete |
+| DASH-03 | Phase 4 | Complete |
+| DASH-04 | Phase 4 | Complete |
 
 **Coverage:**
 - v1 requirements: 21 total

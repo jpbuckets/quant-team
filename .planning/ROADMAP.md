@@ -74,9 +74,9 @@ Plans:
   2. Each team's detail page shows its current positions, running P&L, and full session history
   3. A cross-team summary page shows aggregate portfolio value and exposure across all active teams
   4. Every team's detail page clearly displays whether that team is running in paper or live mode
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 Plans:
-- [ ] 04-01-PLAN.md — Team-scoped API endpoints + cross-team summary endpoint (DASH-01, DASH-02, DASH-03, DASH-04)
+- [x] 04-01-PLAN.md — Team-scoped API endpoints + cross-team summary endpoint (DASH-01, DASH-02, DASH-03, DASH-04)
 - [ ] 04-02-PLAN.md — Dashboard UI with team selector, team detail page, cross-team summary, mode badges (DASH-01, DASH-02, DASH-03, DASH-04)
 
 ## Progress
@@ -89,4 +89,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Stabilize and Restructure | 5/5 | Complete   | 2026-03-26 |
 | 2. Market Data Routing | 2/2 | Complete   | 2026-03-26 |
 | 3. Paper Trading Execution | 2/2 | Complete   | 2026-03-26 |
-| 4. Multi-Team Dashboard | 0/2 | Not started | - |
+| 4. Multi-Team Dashboard | 1/2 | In Progress|  |

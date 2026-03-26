@@ -16,6 +16,7 @@ from .market.indicators import compute_all
 from .trading.risk import RiskChecker
 from .trading.pdt import PDTChecker
 from .trading.portfolio_manager import PortfolioManager
+from .trading.execution_router import ExecutionRouter
 from .database.models import Recommendation, AgentSession, PortfolioPosition
 
 
@@ -49,6 +50,7 @@ class TeamOrchestrator:
         self.risk_checker = RiskChecker()
         self.pdt_checker = PDTChecker(db)
         self.portfolio = PortfolioManager(db, self.market)
+        self.execution = ExecutionRouter(config)
 
     async def run_trading_session(
         self, tickers: list[str] | None = None, evolve_strategy: bool = False,
@@ -262,14 +264,11 @@ class TeamOrchestrator:
             return
 
         if rec.action == "SELL":
-            # Close existing position
-            position = self.portfolio.sell_by_ticker(rec.ticker, rec.reasoning)
-            if position:
-                rec.status = "executed"
-                rec.entry_price = position.price if hasattr(position, 'price') else None
-            else:
-                rec.status = "blocked"
-                rec.reasoning += " [BLOCKED: No open position found for this ticker]"
+            # Close existing position via execution router
+            result = self.execution.execute_sell(rec, self.market, self.db, self.config.team_id)
+            rec.status = "executed" if result.success else "blocked"
+            if not result.success:
+                rec.reasoning += f" [BLOCKED: {result.reason}]"
             return
 
         # BUY — validate first
@@ -323,13 +322,11 @@ class TeamOrchestrator:
                 rec.reasoning += " [BLOCKED: PDT limit reached — no day trades remaining]"
                 return
 
-        # Execute
-        position = self.portfolio.execute_recommendation(rec)
-        if position:
-            rec.status = "executed"
-        else:
-            rec.status = "blocked"
-            rec.reasoning += " [BLOCKED: Execution failed — insufficient cash or price unavailable]"
+        # Execute via execution router
+        result = self.execution.execute_buy(rec, self.market, self.db, self.config.team_id)
+        rec.status = "executed" if result.success else "blocked"
+        if not result.success:
+            rec.reasoning += f" [BLOCKED: {result.reason}]"
 
 
 # Backward compatibility alias

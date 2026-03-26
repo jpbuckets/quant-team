@@ -20,12 +20,13 @@ class PortfolioManager:
         self.db = db
         self.market = market
 
-    def get_state(self) -> PortfolioState:
-        state = self.db.query(PortfolioState).get(1)
+    def get_state(self, team_id: str = "quant") -> PortfolioState:
+        state = self.db.query(PortfolioState).filter_by(team_id=team_id).first()
         if state is None:
             state = PortfolioState(
-                id=1, cash=10000.0, initial_capital=10000.0,
+                cash=10000.0, initial_capital=10000.0,
                 peak_value=10000.0, total_realized_pnl=0.0,
+                team_id=team_id,
             )
             self.db.add(state)
             self.db.commit()

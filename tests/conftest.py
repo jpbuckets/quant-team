@@ -16,7 +16,7 @@ def test_db():
     Session = sessionmaker(bind=engine)
     db = Session()
     # Initialize portfolio state
-    state = PortfolioState(id=1, cash=10000.0, initial_capital=10000.0, peak_value=10000.0, total_realized_pnl=0.0)
+    state = PortfolioState(cash=10000.0, initial_capital=10000.0, peak_value=10000.0, total_realized_pnl=0.0, team_id="quant")
     db.add(state)
     db.commit()
     yield db

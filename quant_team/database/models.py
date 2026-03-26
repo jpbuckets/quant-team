@@ -19,6 +19,7 @@ class Recommendation(Base):
     __tablename__ = "recommendations"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    team_id = Column(String(50), nullable=False, default="quant", index=True)
     session_id = Column(Integer, ForeignKey("agent_sessions.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     ticker = Column(String(10), nullable=False)
@@ -52,6 +53,7 @@ class PortfolioPosition(Base):
     __tablename__ = "portfolio_positions"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    team_id = Column(String(50), nullable=False, default="quant", index=True)
     recommendation_id = Column(Integer, ForeignKey("recommendations.id"), nullable=True)
     ticker = Column(String(10), nullable=False)
     position_type = Column(String(20), nullable=False)
@@ -76,6 +78,7 @@ class PortfolioSnapshot(Base):
     __tablename__ = "portfolio_snapshots"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    team_id = Column(String(50), nullable=False, default="quant", index=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
     total_value = Column(Float, nullable=False)
     cash = Column(Float, nullable=False)
@@ -90,6 +93,7 @@ class TradeRecord(Base):
     __tablename__ = "trade_records"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    team_id = Column(String(50), nullable=False, default="quant", index=True)
     position_id = Column(Integer, ForeignKey("portfolio_positions.id"), nullable=True)
     recommendation_id = Column(Integer, ForeignKey("recommendations.id"), nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
@@ -109,6 +113,7 @@ class AgentSession(Base):
     __tablename__ = "agent_sessions"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    team_id = Column(String(50), nullable=False, default="quant", index=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
     tickers_analyzed = Column(Text, nullable=True)  # JSON array
     market_context_summary = Column(Text, nullable=True)
@@ -124,7 +129,8 @@ class AgentSession(Base):
 class PortfolioState(Base):
     __tablename__ = "portfolio_state"
 
-    id = Column(Integer, primary_key=True)  # always 1
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    team_id = Column(String(50), nullable=False, default="quant", index=True)
     cash = Column(Float, default=10000.0)
     initial_capital = Column(Float, default=10000.0)
     peak_value = Column(Float, default=10000.0)

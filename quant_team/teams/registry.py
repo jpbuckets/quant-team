@@ -39,6 +39,7 @@ class TeamConfig:
     risk_limits: RiskLimits = field(default_factory=RiskLimits)
     schedule_cron: list[dict] = field(default_factory=list)
     execution_backend: str = "paper"
+    exchange: str = "binance"
     watchlist: list[str] = field(default_factory=list)
 
 
@@ -98,6 +99,7 @@ class TeamRegistry:
             risk_limits=risk_limits,
             schedule_cron=data.get("schedule_cron", []),
             execution_backend=data.get("execution_backend", "paper"),
+            exchange=data.get("exchange", "binance"),
             watchlist=data.get("watchlist", []),
         )
 

@@ -31,10 +31,10 @@ Requirements for initial milestone. Each maps to roadmap phases.
 
 ### Trade Execution
 
-- [ ] **EXEC-01**: All teams start in paper trading mode by default
-- [ ] **EXEC-02**: Paper trades are logged with what would have happened (symbol, side, quantity, price)
-- [ ] **EXEC-03**: Live vs paper mode is toggleable per team
-- [ ] **EXEC-04**: Execution is routed to the correct backend based on team configuration
+- [x] **EXEC-01**: All teams start in paper trading mode by default
+- [x] **EXEC-02**: Paper trades are logged with what would have happened (symbol, side, quantity, price)
+- [x] **EXEC-03**: Live vs paper mode is toggleable per team
+- [x] **EXEC-04**: Execution is routed to the correct backend based on team configuration
 
 ### Dashboard & UI
 
@@ -94,10 +94,10 @@ Deferred to future milestone. Tracked but not in current roadmap.
 | DATA-02 | Phase 2 | Complete |
 | DATA-03 | Phase 2 | Complete |
 | DATA-04 | Phase 2 | Complete |
-| EXEC-01 | Phase 3 | Pending |
-| EXEC-02 | Phase 3 | Pending |
-| EXEC-03 | Phase 3 | Pending |
-| EXEC-04 | Phase 3 | Pending |
+| EXEC-01 | Phase 3 | Complete |
+| EXEC-02 | Phase 3 | Complete |
+| EXEC-03 | Phase 3 | Complete |
+| EXEC-04 | Phase 3 | Complete |
 | DASH-01 | Phase 4 | Pending |
 | DASH-02 | Phase 4 | Pending |
 | DASH-03 | Phase 4 | Pending |

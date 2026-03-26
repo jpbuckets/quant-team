@@ -10,13 +10,13 @@ from ..database.models import (
     PortfolioState, PortfolioPosition, PortfolioSnapshot,
     TradeRecord, Recommendation,
 )
-from ..market.stock_data import StockMarketData
+from ..market.router import MarketDataRouter
 
 
 class PortfolioManager:
     """Manages the fictional $10,000 portfolio backed by SQLite."""
 
-    def __init__(self, db: Session, market: StockMarketData):
+    def __init__(self, db: Session, market: MarketDataRouter):
         self.db = db
         self.market = market
 

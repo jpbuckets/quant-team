@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from .agents.base import Agent, Message
 from .teams.registry import TeamConfig
-from .market.stock_data import StockMarketData
+from .market.router import MarketDataRouter
 from .market.indicators import compute_all
 from .trading.risk import RiskChecker
 from .trading.pdt import PDTChecker
@@ -45,7 +45,7 @@ class TeamOrchestrator:
         self.decision_agent = self.agents[-1] if self.agents else None
 
         # Infrastructure
-        self.market = StockMarketData()
+        self.market = MarketDataRouter(config)
         self.risk_checker = RiskChecker()
         self.pdt_checker = PDTChecker(db)
         self.portfolio = PortfolioManager(db, self.market)
@@ -105,17 +105,28 @@ class TeamOrchestrator:
             f"{pdt_status['day_trades_remaining']} remaining. Prefer swing trades (2+ day holds)."
         )
 
-        task_prompt = (
-            f"Analyze the current US stock market conditions and our portfolio. "
-            f"Watchlist: {', '.join(tickers)}. "
-            f"We trade AUTONOMOUSLY — decisions execute immediately. "
-            f"We can buy shares (long only, NO shorting) and trade options "
-            f"(long calls, long puts, spreads — NO naked short options, NO futures). "
-            f"Our goal is to GROW the $10,000 portfolio. "
-            f"{pdt_note} "
-            f"Provide your assessment and any trade ideas from your perspective. "
-            f"Reference specific data points from the indicators."
-        )
+        if self.config.asset_class == "crypto":
+            task_prompt = (
+                f"Analyze the current crypto market conditions and our portfolio. "
+                f"Watchlist: {', '.join(tickers)}. "
+                f"We trade AUTONOMOUSLY — decisions execute immediately. "
+                f"We can buy tokens (long only, NO shorting, NO leverage). "
+                f"Our goal is to GROW the $10,000 portfolio. "
+                f"Provide your assessment and any trade ideas from your perspective. "
+                f"Reference specific data points from the indicators."
+            )
+        else:
+            task_prompt = (
+                f"Analyze the current US stock market conditions and our portfolio. "
+                f"Watchlist: {', '.join(tickers)}. "
+                f"We trade AUTONOMOUSLY — decisions execute immediately. "
+                f"We can buy shares (long only, NO shorting) and trade options "
+                f"(long calls, long puts, spreads — NO naked short options, NO futures). "
+                f"Our goal is to GROW the $10,000 portfolio. "
+                f"{pdt_note} "
+                f"Provide your assessment and any trade ideas from your perspective. "
+                f"Reference specific data points from the indicators."
+            )
 
         # All agents except the last one are analysts; last one is the decision-maker
         analyst_agents = self.agents[:-1] if len(self.agents) > 1 else []

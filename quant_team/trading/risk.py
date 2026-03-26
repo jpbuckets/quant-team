@@ -7,8 +7,8 @@ from dataclasses import dataclass
 
 @dataclass
 class RiskLimits:
-    max_position_pct: float = 10.0           # Max single stock position as % of portfolio
-    max_options_position_pct: float = 5.0    # Max single options position as % of portfolio
+    max_position_pct: float = 25.0           # Max single stock position as % of portfolio
+    max_options_position_pct: float = 15.0   # Max single options position as % of portfolio
     max_exposure_pct: float = 90.0           # Max total exposure (rest in cash)
     max_sector_concentration_pct: float = 30.0  # Max in any one sector
     max_daily_drawdown_pct: float = 2.0      # Halt trading if daily DD exceeds this

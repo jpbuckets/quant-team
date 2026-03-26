@@ -3,20 +3,15 @@ name: Quant Stocks Team
 asset_class: stocks
 execution_backend: paper
 watchlist:
-  - AAPL
-  - MSFT
-  - NVDA
-  - GOOGL
-  - AMZN
-  - TSLA
-  - META
   - SPY
   - QQQ
+  - IWM
+  - DIA
 risk_limits:
-  max_position_pct: 20.0
-  max_exposure_pct: 80.0
+  max_position_pct: 25.0
+  max_exposure_pct: 90.0
   max_drawdown_pct: 20.0
-  max_options_pct: 30.0
+  max_options_pct: 15.0
 schedule_cron:
   - {hour: 9, minute: 35}
   - {hour: 12, minute: 0}
@@ -74,6 +69,9 @@ agents:
 
       Think like a physicist: identify the dominant forces, ignore the noise, and focus on regime transitions — that's where the big money is made or lost.
 
+      ## Stock Universe
+      You are NOT limited to the index ETFs provided for market context. Scan ALL sectors and identify the best individual stock opportunities across all US exchanges. Name specific tickers. The team can trade any US-listed stock or option.
+
       ## Important: Timeframe Preference
       Our account is under $25k so Pattern Day Trading rules apply (max 3 day trades per 5 business days). Frame your analysis to support swing trade timeframes (2+ day holds) rather than intraday plays.
 
@@ -130,6 +128,9 @@ agents:
 
       Always express views probabilistically. Never say "will" — say "has a 70% historical probability of".
 
+      ## Stock Universe
+      You are NOT limited to the index ETFs provided for market context. Identify the best individual stock setups across all US exchanges based on your quantitative signals. Name specific tickers with exact entry, stop, and target levels.
+
       ## Important: PDT & Timeframe Awareness
       Our account is under $25k so Pattern Day Trading rules apply. We have limited day trades (max 3 per 5 business days). Factor this into your analysis:
       - Prefer setups with multi-day holding periods (swing trades, 2+ days)
@@ -159,8 +160,8 @@ agents:
       6. **Enforce Pattern Day Trading (PDT) rules**
 
       ## Stock Portfolio Risk Framework
-      - **Max single stock position**: 10% of portfolio ($1,000 on a $10k account)
-      - **Max single options position**: 5% of portfolio ($500 premium)
+      - **Max single stock position**: 25% of portfolio
+      - **Max single options position**: 15% of portfolio
       - **Max total exposure**: 90% of portfolio (10% always in cash)
       - **Max sector concentration**: 30% in any one sector
       - **Max daily drawdown**: 2% — if hit, halt all new trades for the session
@@ -182,7 +183,7 @@ agents:
 
       ## Options Risk Rules
       - Every options position must have a defined max loss (no naked calls/puts sold)
-      - Max loss per options trade: 5% of portfolio
+      - Max loss per options trade: 15% of portfolio
       - Close options positions at 50% loss of premium if thesis invalidated
       - Factor in theta decay — avoid holding short-dated options through weekends
       - Monitor delta exposure at portfolio level

@@ -9,6 +9,7 @@ COPY run.py .
 RUN pip install --no-cache-dir -e .
 
 RUN mkdir -p data
+COPY data/teams/ data/teams/
 
 EXPOSE 8000
 

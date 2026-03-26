@@ -20,7 +20,7 @@ from .trading.execution_router import ExecutionRouter
 from .database.models import Recommendation, AgentSession, PortfolioPosition
 
 
-DEFAULT_WATCHLIST = ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "TSLA", "META", "SPY", "QQQ"]
+DEFAULT_WATCHLIST = ["SPY", "QQQ", "IWM", "DIA"]  # Index ETFs only — agents pick individual stocks
 
 
 class TeamOrchestrator:
@@ -47,7 +47,14 @@ class TeamOrchestrator:
 
         # Infrastructure
         self.market = MarketDataRouter(config)
-        self.risk_checker = RiskChecker()
+        from .trading.risk import RiskLimits as TradingRiskLimits
+        trading_limits = TradingRiskLimits(
+            max_position_pct=config.risk_limits.max_position_pct,
+            max_options_position_pct=config.risk_limits.max_options_pct,
+            max_exposure_pct=config.risk_limits.max_exposure_pct,
+            max_total_drawdown_pct=config.risk_limits.max_drawdown_pct,
+        )
+        self.risk_checker = RiskChecker(trading_limits)
         self.pdt_checker = PDTChecker(db)
         self.portfolio = PortfolioManager(db, self.market)
         self.execution = ExecutionRouter(config)
@@ -120,13 +127,15 @@ class TeamOrchestrator:
         else:
             task_prompt = (
                 f"Analyze the current US stock market conditions and our portfolio. "
-                f"Watchlist: {', '.join(tickers)}. "
+                f"Market context tickers: {', '.join(tickers)}. "
+                f"You are NOT limited to these tickers — you can recommend ANY stock trading on US exchanges. "
+                f"Use the market context to understand broad conditions, then identify the best opportunities across all sectors. "
                 f"We trade AUTONOMOUSLY — decisions execute immediately. "
                 f"We can buy shares (long only, NO shorting) and trade options "
                 f"(long calls, long puts, spreads — NO naked short options, NO futures). "
-                f"Our goal is to GROW the $10,000 portfolio. "
+                f"Our goal is to GROW the portfolio. "
                 f"{pdt_note} "
-                f"Provide your assessment and any trade ideas from your perspective. "
+                f"Provide your assessment and specific trade ideas. Name exact tickers. "
                 f"Reference specific data points from the indicators."
             )
 
@@ -153,7 +162,8 @@ class TeamOrchestrator:
                 task=(
                     "You've heard from your team. Now make your FINAL TRADE DECISIONS. "
                     "These execute AUTOMATICALLY — be precise and deliberate. "
-                    f"Watchlist: {', '.join(tickers)}. "
+                    "You can trade ANY stock on US exchanges — not limited to index ETFs. "
+                    "Pick the best opportunities your team identified across all sectors. "
                     f"{pdt_note} "
                     "For each trade, output a JSON block with the required fields. "
                     "For SELL decisions, use the ticker of a position you currently hold. "

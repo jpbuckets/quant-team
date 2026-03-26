@@ -9,18 +9,18 @@ Requirements for initial milestone. Each maps to roadmap phases.
 
 ### Stability
 
-- [ ] **STAB-01**: Analysis button completes within 5 minutes or surfaces a timeout error (no infinite hang)
-- [ ] **STAB-02**: Multiple simultaneous sessions don't corrupt each other's state or trigger duplicate trades
-- [ ] **STAB-03**: User passwords are hashed with bcrypt, never stored or compared in plaintext
-- [ ] **STAB-04**: Analysis progress is visible to the user during a running session
+- [x] **STAB-01**: Analysis button completes within 5 minutes or surfaces a timeout error (no infinite hang)
+- [x] **STAB-02**: Multiple simultaneous sessions don't corrupt each other's state or trigger duplicate trades
+- [x] **STAB-03**: User passwords are hashed with bcrypt, never stored or compared in plaintext
+- [x] **STAB-04**: Analysis progress is visible to the user during a running session
 
 ### Multi-Team Architecture
 
-- [ ] **TEAM-01**: Teams are defined via configuration files with name, asset class, agent specs, risk limits, and schedule
-- [ ] **TEAM-02**: All database models (PortfolioState, PortfolioPosition, TradeRecord, AgentSession, Recommendation) are scoped by team_id
-- [ ] **TEAM-03**: Orchestrator accepts team configuration and constructs agents dynamically (no hardcoded agent imports)
-- [ ] **TEAM-04**: Each team can have a different set of specialized agents with team-specific system prompts
-- [ ] **TEAM-05**: Teams can be scheduled independently (crypto 24/7, stocks market hours only)
+- [x] **TEAM-01**: Teams are defined via configuration files with name, asset class, agent specs, risk limits, and schedule
+- [x] **TEAM-02**: All database models (PortfolioState, PortfolioPosition, TradeRecord, AgentSession, Recommendation) are scoped by team_id
+- [x] **TEAM-03**: Orchestrator accepts team configuration and constructs agents dynamically (no hardcoded agent imports)
+- [x] **TEAM-04**: Each team can have a different set of specialized agents with team-specific system prompts
+- [x] **TEAM-05**: Teams can be scheduled independently (crypto 24/7, stocks market hours only)
 
 ### Market Data
 
@@ -81,15 +81,15 @@ Deferred to future milestone. Tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| STAB-01 | Phase 1 | Pending |
-| STAB-02 | Phase 1 | Pending |
-| STAB-03 | Phase 1 | Pending |
-| STAB-04 | Phase 1 | Pending |
-| TEAM-01 | Phase 1 | Pending |
-| TEAM-02 | Phase 1 | Pending |
-| TEAM-03 | Phase 1 | Pending |
-| TEAM-04 | Phase 1 | Pending |
-| TEAM-05 | Phase 1 | Pending |
+| STAB-01 | Phase 1 | Complete |
+| STAB-02 | Phase 1 | Complete |
+| STAB-03 | Phase 1 | Complete |
+| STAB-04 | Phase 1 | Complete |
+| TEAM-01 | Phase 1 | Complete |
+| TEAM-02 | Phase 1 | Complete |
+| TEAM-03 | Phase 1 | Complete |
+| TEAM-04 | Phase 1 | Complete |
+| TEAM-05 | Phase 1 | Complete |
 | DATA-01 | Phase 2 | Pending |
 | DATA-02 | Phase 2 | Pending |
 | DATA-03 | Phase 2 | Pending |

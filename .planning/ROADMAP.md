@@ -31,7 +31,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. A new crypto or options team can be added by writing a YAML config file — no Python code changes required in the orchestrator
 **Plans:** 5 plans
 Plans:
-- [ ] 01-01-PLAN.md — Test infrastructure + install dependencies (pytest, bcrypt, pyyaml)
+- [x] 01-01-PLAN.md — Test infrastructure + install dependencies (pytest, bcrypt, pyyaml)
 - [ ] 01-02-PLAN.md — Async agent pipeline + per-session state + progress (STAB-01, STAB-02, STAB-04)
 - [ ] 01-03-PLAN.md — Bcrypt password authentication (STAB-03)
 - [ ] 01-04-PLAN.md — Database team_id migration + WAL mode (TEAM-02)

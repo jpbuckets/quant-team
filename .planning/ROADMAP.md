@@ -60,8 +60,10 @@ Plans:
   2. Each paper trade creates a log entry showing symbol, side, quantity, and price that would have executed
   3. Toggling a team from paper to live (or back) takes effect on the next session without restarting the server
   4. A stock team's execution is routed to the Alpaca-compatible paper executor; a crypto team's execution is routed to the Solana-compatible paper executor
-**Plans**: TBD
-**UI hint**: yes
+**Plans:** 2 plans
+Plans:
+- [ ] 03-01-PLAN.md — Execution framework with PaperExecutor + trade logging (EXEC-01, EXEC-02)
+- [ ] 03-02-PLAN.md — ExecutionRouter + orchestrator wiring + mode toggle API (EXEC-03, EXEC-04)
 
 ### Phase 4: Multi-Team Dashboard
 **Goal**: The user can view and manage all teams from one web interface with per-team and aggregate visibility
@@ -84,5 +86,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Stabilize and Restructure | 5/5 | Complete   | 2026-03-26 |
 | 2. Market Data Routing | 2/2 | Complete   | 2026-03-26 |
-| 3. Paper Trading Execution | 0/TBD | Not started | - |
+| 3. Paper Trading Execution | 0/2 | In progress | - |
 | 4. Multi-Team Dashboard | 0/TBD | Not started | - |

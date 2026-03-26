@@ -5,5 +5,9 @@ __pycache__/
 *.egg-info/
 dist/
 build/
-data/
+data/*.db
+data/sessions/
+data/ips_log.json
+data/wallet.json
+data/ips.md
 logs/

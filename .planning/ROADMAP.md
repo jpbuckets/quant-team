@@ -46,9 +46,9 @@ Plans:
   2. A crypto team session receives OHLCV candlestick data from a CEX via ccxt
   3. A stock team session continues to receive equity data from yfinance without regression
   4. Pointing a team at a different asset class in its config automatically routes it to the correct data source
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 Plans:
-- [ ] 02-01-PLAN.md — CryptoMarketData provider + MarketDataRouter dispatch + tests
+- [x] 02-01-PLAN.md — CryptoMarketData provider + MarketDataRouter dispatch + tests
 - [ ] 02-02-PLAN.md — Wire router into orchestrator + crypto.yaml + env config
 
 ### Phase 3: Paper Trading Execution
@@ -83,6 +83,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Stabilize and Restructure | 5/5 | Complete   | 2026-03-26 |
-| 2. Market Data Routing | 0/2 | Not started | - |
+| 2. Market Data Routing | 1/2 | In Progress|  |
 | 3. Paper Trading Execution | 0/TBD | Not started | - |
 | 4. Multi-Team Dashboard | 0/TBD | Not started | - |

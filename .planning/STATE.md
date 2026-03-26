@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to plan
-stopped_at: Completed 01-05-PLAN.md — YAML TeamRegistry and TeamOrchestrator
-last_updated: "2026-03-26T03:59:43.445Z"
+status: Ready to execute
+stopped_at: Completed 02-01-PLAN.md — CryptoMarketData and MarketDataRouter
+last_updated: "2026-03-26T04:20:23.872Z"
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 5
-  completed_plans: 5
+  total_plans: 7
+  completed_plans: 6
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-25)
 
 **Core value:** The AI agent round-table produces actionable trade decisions that can be automatically executed
-**Current focus:** Phase 01 — stabilize-and-restructure
+**Current focus:** Phase 02 — market-data-routing
 
 ## Current Position
 
-Phase: 2
-Plan: Not started
+Phase: 02 (market-data-routing) — EXECUTING
+Plan: 2 of 2
 
 ## Performance Metrics
 
@@ -49,6 +49,7 @@ Plan: Not started
 | Phase 01-stabilize-and-restructure P01 | 12 | 2 tasks | 9 files |
 | Phase 01-stabilize-and-restructure P03 | 69 | 1 tasks | 4 files |
 | Phase 01-stabilize-and-restructure P05 | 901 | 2 tasks | 9 files |
+| Phase 02-market-data-routing P01 | 25 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,9 @@ Recent decisions affecting current work:
 - [Phase 01-05]: TradingDesk alias retained for backward compatibility while renaming to TeamOrchestrator
 - [Phase 01-05]: data/ gitignore changed to specific exclusions to allow data/teams/ YAML config tracking
 - [Phase 01-05]: Adding a new team requires only a YAML file in data/teams/ — no Python code changes needed
+- [Phase 02-01]: CryptoMarketData uses Jupiter Price API v3 (api.jup.ag) with graceful degradation on missing JUPITER_API_KEY
+- [Phase 02-01]: MarketDataRouter raises ValueError for unknown asset_class — fail-fast design
+- [Phase 02-01]: TeamConfig.exchange field added with 'binance' default; passed through to CryptoMarketData
 
 ### Pending Todos
 
@@ -82,6 +86,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T03:52:59.612Z
-Stopped at: Completed 01-05-PLAN.md — YAML TeamRegistry and TeamOrchestrator
+Last session: 2026-03-26T04:20:23.870Z
+Stopped at: Completed 02-01-PLAN.md — CryptoMarketData and MarketDataRouter
 Resume file: None

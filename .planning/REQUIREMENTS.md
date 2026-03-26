@@ -24,10 +24,10 @@ Requirements for initial milestone. Each maps to roadmap phases.
 
 ### Market Data
 
-- [ ] **DATA-01**: Crypto team can fetch Solana token prices via Jupiter Price API
-- [ ] **DATA-02**: Crypto team can fetch CEX market data (OHLCV, tickers) via ccxt
-- [ ] **DATA-03**: Stock team can fetch equity market data via yfinance (existing, must continue working)
-- [ ] **DATA-04**: Market data is routed to the correct source based on team's asset class
+- [x] **DATA-01**: Crypto team can fetch Solana token prices via Jupiter Price API
+- [x] **DATA-02**: Crypto team can fetch CEX market data (OHLCV, tickers) via ccxt
+- [x] **DATA-03**: Stock team can fetch equity market data via yfinance (existing, must continue working)
+- [x] **DATA-04**: Market data is routed to the correct source based on team's asset class
 
 ### Trade Execution
 
@@ -90,10 +90,10 @@ Deferred to future milestone. Tracked but not in current roadmap.
 | TEAM-03 | Phase 1 | Complete |
 | TEAM-04 | Phase 1 | Complete |
 | TEAM-05 | Phase 1 | Complete |
-| DATA-01 | Phase 2 | Pending |
-| DATA-02 | Phase 2 | Pending |
-| DATA-03 | Phase 2 | Pending |
-| DATA-04 | Phase 2 | Pending |
+| DATA-01 | Phase 2 | Complete |
+| DATA-02 | Phase 2 | Complete |
+| DATA-03 | Phase 2 | Complete |
+| DATA-04 | Phase 2 | Complete |
 | EXEC-01 | Phase 3 | Pending |
 | EXEC-02 | Phase 3 | Pending |
 | EXEC-03 | Phase 3 | Pending |

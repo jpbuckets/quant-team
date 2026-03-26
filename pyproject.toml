@@ -33,6 +33,7 @@ include = ["quant_team*"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+addopts = "-p no:anchorpy"
 
 [build-system]
 requires = ["setuptools>=68.0"]

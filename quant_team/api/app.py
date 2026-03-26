@@ -162,11 +162,13 @@ from .routers.recommendations import router as rec_router
 from .routers.portfolio import router as portfolio_router
 from .routers.market import router as market_router
 from .routers.sessions import router as sessions_router
+from .routers import teams
 
 app.include_router(rec_router)
 app.include_router(portfolio_router)
 app.include_router(market_router)
 app.include_router(sessions_router)
+app.include_router(teams.router, prefix="/api/teams", tags=["teams"])
 
 
 # ── Auth helper ─────────────────────────────────────────────────

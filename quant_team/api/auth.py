@@ -7,6 +7,8 @@ import hmac
 import os
 import time
 
+import bcrypt
+
 from fastapi import Request, Response, HTTPException
 from fastapi.responses import RedirectResponse
 
@@ -65,12 +67,16 @@ def verify_session_cookie(cookie: str) -> str | None:
 
 
 def authenticate(email: str, password: str) -> bool:
-    """Check credentials against allowed users."""
+    """Check credentials — stored value is a bcrypt hash."""
     users = get_allowed_users()
-    stored_password = users.get(email.lower())
-    if stored_password is None:
+    stored_hash = users.get(email.lower())
+    if stored_hash is None:
         return False
-    return hmac.compare_digest(stored_password, password)
+    try:
+        return bcrypt.checkpw(password.encode(), stored_hash.encode())
+    except (ValueError, TypeError):
+        # stored_hash is not a valid bcrypt hash (e.g., still plaintext)
+        return False
 
 
 def get_current_user(request: Request) -> str | None:

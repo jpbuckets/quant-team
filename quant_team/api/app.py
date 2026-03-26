@@ -42,26 +42,31 @@ def _setup_scheduler():
 
     from apscheduler.schedulers.background import BackgroundScheduler
     from apscheduler.triggers.cron import CronTrigger
+    from ..teams.registry import TeamRegistry
 
     _scheduler = BackgroundScheduler(timezone="US/Eastern")
 
-    # Trading sessions: 9:35 AM, 12:00 PM, 3:30 PM ET (weekdays)
-    for hour, minute in [(9, 35), (12, 0), (15, 30)]:
-        _scheduler.add_job(
-            _run_scheduled_session,
-            CronTrigger(hour=hour, minute=minute, day_of_week="mon-fri"),
-            id=f"trade_{hour}_{minute}",
-            kwargs={"evolve": hour == 15},  # Evolve strategy on last session
-        )
+    registry = TeamRegistry()
+    for config in registry.all():
+        for schedule in config.schedule_cron:
+            hour = schedule["hour"]
+            minute = schedule["minute"]
+            day_of_week = schedule.get("day_of_week", "mon-fri")
+            _scheduler.add_job(
+                _run_scheduled_session,
+                CronTrigger(hour=hour, minute=minute, day_of_week=day_of_week),
+                id=f"trade_{config.team_id}_{hour}_{minute}",
+                kwargs={"team_id": config.team_id, "evolve": hour == 15},
+            )
+            logger.info(f"Scheduled {config.team_id} session at {hour}:{minute:02d}")
 
-    # Stop-loss checks every 5 minutes during market hours
+    # Stop-loss checks every 5 minutes during market hours (for all teams)
     _scheduler.add_job(
         _run_stop_check,
         CronTrigger(minute="*/5", hour="9-15", day_of_week="mon-fri"),
         id="stop_check",
     )
 
-    # Portfolio snapshots every 30 minutes during market hours
     _scheduler.add_job(
         _run_snapshot,
         CronTrigger(minute="0,30", hour="9-15", day_of_week="mon-fri"),
@@ -69,23 +74,26 @@ def _setup_scheduler():
     )
 
     _scheduler.start()
-    logger.info("Scheduler started: trading sessions, stop checks, snapshots")
+    logger.info("Scheduler started with per-team schedules")
 
 
-def _run_scheduled_session(evolve: bool = False):
+def _run_scheduled_session(team_id: str = "quant", evolve: bool = False):
     """Run an autonomous trading session."""
+    import asyncio
     try:
-        import asyncio
-        from ..orchestrator import TradingDesk
+        from ..orchestrator import TeamOrchestrator
+        from ..teams.registry import TeamRegistry
+        registry = TeamRegistry()
+        config = registry.get(team_id)
         db = get_db()
         try:
-            desk = TradingDesk(db=db)
+            desk = TeamOrchestrator(config=config, db=db)
             asyncio.run(desk.run_trading_session(evolve_strategy=evolve))
-            logger.info("Scheduled trading session completed")
+            logger.info(f"Scheduled session for {team_id} completed")
         finally:
             db.close()
     except Exception as e:
-        logger.error(f"Scheduled session error: {e}")
+        logger.error(f"Scheduled session error for {team_id}: {e}")
 
 
 def _run_stop_check():

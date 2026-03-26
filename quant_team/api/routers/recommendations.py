@@ -11,7 +11,8 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks
 from ...database.connection import get_db
 from ...database.models import Recommendation
 from ...trading.pdt import PDTChecker
-from ...orchestrator import TradingDesk
+from ...orchestrator import TeamOrchestrator
+from ...teams.registry import TeamRegistry
 from ..schemas import GenerateRequest
 
 logger = logging.getLogger("quant_team")
@@ -118,7 +119,9 @@ async def _run_session(session_id: str, tickers: list[str] | None) -> None:
     try:
         db = get_db()
         try:
-            desk = TradingDesk(db=db, tickers=tickers)
+            registry = TeamRegistry()
+            config = registry.get("quant")  # Default to quant team for now
+            desk = TeamOrchestrator(config=config, db=db)
             await desk.run_trading_session(tickers, on_progress=lambda s, n, t: _update_progress(session_id, s, n, t))
             _sessions[session_id]["progress"] = {"step": "Complete", "step_num": 6, "total_steps": 6}
             logger.info("Trading session completed successfully")

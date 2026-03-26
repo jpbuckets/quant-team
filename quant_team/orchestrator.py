@@ -10,7 +10,7 @@ from pathlib import Path
 from sqlalchemy.orm import Session
 
 from .agents.base import Agent, Message
-from .agents import cio, quant, risk, macro
+from .teams.registry import TeamConfig
 from .market.stock_data import StockMarketData
 from .market.indicators import compute_all
 from .trading.risk import RiskChecker
@@ -22,18 +22,27 @@ from .database.models import Recommendation, AgentSession, PortfolioPosition
 DEFAULT_WATCHLIST = ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "TSLA", "META", "SPY", "QQQ"]
 
 
-class TradingDesk:
-    """The trading desk — assembles the team, runs sessions, and auto-executes trades."""
+class TeamOrchestrator:
+    """Orchestrates trading sessions for a specific team using its configuration."""
 
-    def __init__(self, db: Session, tickers: list[str] | None = None):
+    def __init__(self, config: TeamConfig, db: Session):
+        self.config = config
         self.db = db
-        self.tickers = tickers or DEFAULT_WATCHLIST
+        self.tickers = config.watchlist or DEFAULT_WATCHLIST
 
-        # Assemble the team
-        self.cio_agent = cio.create()
-        self.quant_agent = quant.create()
-        self.risk_agent = risk.create()
-        self.macro_agent = macro.create()
+        # Construct agents dynamically from team config
+        self.agents: list[Agent] = []
+        for spec in config.agents:
+            agent = Agent(
+                name=spec.name,
+                title=spec.title,
+                system_prompt=spec.system_prompt,
+                model=spec.model,
+            )
+            self.agents.append(agent)
+
+        # The last agent is the decision-maker (CIO equivalent)
+        self.decision_agent = self.agents[-1] if self.agents else None
 
         # Infrastructure
         self.market = StockMarketData()
@@ -108,50 +117,52 @@ class TradingDesk:
             f"Reference specific data points from the indicators."
         )
 
-        agent_order = [
-            ("macro", self.macro_agent, "Macro Strategist analyzing"),
-            ("quant", self.quant_agent, "Quant Analyst crunching numbers"),
-            ("risk", self.risk_agent, "Risk Officer evaluating exposure"),
-        ]
+        # All agents except the last one are analysts; last one is the decision-maker
+        analyst_agents = self.agents[:-1] if len(self.agents) > 1 else []
+        total_steps = 6
 
-        for i, (key, agent, label) in enumerate(agent_order):
-            _progress(label, 2 + i, 6)
+        for i, agent in enumerate(analyst_agents):
+            _progress(f"{agent.name} ({agent.title}) analyzing", 2 + i, total_steps)
             response = await agent.analyze(
                 market_context=market_context,
                 discussion=discussion,
                 task=task_prompt,
             )
             discussion.append(Message(role=f"{agent.name} ({agent.title})", content=response))
-            agent_analyses[key] = response
+            agent_analyses[agent.name.lower()] = response
 
-        # Step 3: CIO makes final decisions
-        _progress("CIO making final decisions", 5, 6)
-        cio_response = await self.cio_agent.analyze(
-            market_context=market_context,
-            discussion=discussion,
-            task=(
-                "You've heard from your team. Now make your FINAL TRADE DECISIONS. "
-                "These execute AUTOMATICALLY — be precise and deliberate. "
-                f"Watchlist: {', '.join(tickers)}. "
-                f"{pdt_note} "
-                "For each trade, output a JSON block with the required fields. "
-                "For SELL decisions, use the ticker of a position you currently hold. "
-                "Remember: NO shorting, NO futures, NO naked short options. "
-                "Your goal is to GROW this portfolio. "
-                "If no trades, explain why HOLD is the right call."
-            ),
-        )
-        discussion.append(Message(role="CIO (Chief Investment Officer)", content=cio_response))
-        agent_analyses["cio"] = cio_response
+        # Step 3: Decision-maker makes final decisions
+        if self.decision_agent:
+            _progress(f"{self.decision_agent.name} making final decisions", 2 + len(analyst_agents), total_steps)
+            cio_response = await self.decision_agent.analyze(
+                market_context=market_context,
+                discussion=discussion,
+                task=(
+                    "You've heard from your team. Now make your FINAL TRADE DECISIONS. "
+                    "These execute AUTOMATICALLY — be precise and deliberate. "
+                    f"Watchlist: {', '.join(tickers)}. "
+                    f"{pdt_note} "
+                    "For each trade, output a JSON block with the required fields. "
+                    "For SELL decisions, use the ticker of a position you currently hold. "
+                    "Remember: NO shorting, NO futures, NO naked short options. "
+                    "Your goal is to GROW this portfolio. "
+                    "If no trades, explain why HOLD is the right call."
+                ),
+            )
+            discussion.append(Message(role=f"{self.decision_agent.name} ({self.decision_agent.title})", content=cio_response))
+            agent_analyses[self.decision_agent.name.lower()] = cio_response
+        else:
+            cio_response = ""
 
         # Step 4: Save session & execute
         _progress("Executing trades & saving session", 6, 6)
         session = AgentSession(
+            team_id=self.config.team_id,
             tickers_analyzed=json.dumps(tickers),
             market_context_summary=market_context[:5000],
-            macro_analysis=agent_analyses.get("macro", ""),
-            quant_analysis=agent_analyses.get("quant", ""),
-            risk_analysis=agent_analyses.get("risk", ""),
+            macro_analysis=agent_analyses.get("macro", agent_analyses.get(self.agents[0].name.lower() if self.agents else "", "")),
+            quant_analysis=agent_analyses.get("quant", agent_analyses.get(self.agents[1].name.lower() if len(self.agents) > 1 else "", "")),
+            risk_analysis=agent_analyses.get("risk", agent_analyses.get(self.agents[2].name.lower() if len(self.agents) > 2 else "", "")),
             cio_decision=cio_response,
         )
         self.db.add(session)
@@ -169,10 +180,10 @@ class TradingDesk:
         self.db.commit()
 
         # Step 7: Evolve strategy if requested (end-of-day)
-        if evolve_strategy:
+        if evolve_strategy and self.decision_agent:
             try:
                 from .strategy.ips import evolve_ips
-                await evolve_ips(self.cio_agent, self.db)
+                await evolve_ips(self.decision_agent, self.db)
             except Exception:
                 pass  # Don't fail the session if evolution fails
 
@@ -181,7 +192,7 @@ class TradingDesk:
     def _parse_recommendations(
         self, cio_response: str, session_id: int
     ) -> list[Recommendation]:
-        """Extract JSON trade decisions from CIO response."""
+        """Extract JSON trade decisions from CIO/decision-maker response."""
         recommendations = []
         json_pattern = r'\{[^{}]*"action"[^{}]*\}'
         matches = re.findall(json_pattern, cio_response, re.DOTALL)
@@ -210,6 +221,7 @@ class TradingDesk:
                     pass
 
             rec = Recommendation(
+                team_id=self.config.team_id,
                 session_id=session_id,
                 ticker=ticker,
                 action=action,
@@ -307,3 +319,7 @@ class TradingDesk:
         else:
             rec.status = "blocked"
             rec.reasoning += " [BLOCKED: Execution failed — insufficient cash or price unavailable]"
+
+
+# Backward compatibility alias
+TradingDesk = TeamOrchestrator

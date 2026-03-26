@@ -28,7 +28,7 @@ Starting capital: $10,000 (autonomous trading — decisions execute automaticall
 Provide your section from your area of expertise. Be specific with numbers and rules."""
 
 
-def generate_ips(agents: list[Agent], data_dir: str = "data") -> str:
+async def generate_ips(agents: list[Agent], data_dir: str = "data") -> str:
     """Have the team collaboratively draft an IPS."""
     data_path = Path(data_dir)
     data_path.mkdir(exist_ok=True)
@@ -46,7 +46,7 @@ def generate_ips(agents: list[Agent], data_dir: str = "data") -> str:
                 "Build on what your colleagues have said. Be specific."
             )
 
-        response = agent.respond("\n\n".join(prompt_parts))
+        response = await agent.respond("\n\n".join(prompt_parts))
         discussion.append(Message(role=agent.name, content=response))
 
     cio = agents[0]
@@ -58,7 +58,7 @@ def generate_ips(agents: list[Agent], data_dir: str = "data") -> str:
     for msg in discussion:
         synthesis_prompt += f"**{msg.role}**: {msg.content}\n\n"
 
-    final_ips = cio.respond(synthesis_prompt)
+    final_ips = await cio.respond(synthesis_prompt)
 
     (data_path / "ips.md").write_text(final_ips)
     log = {
@@ -71,7 +71,7 @@ def generate_ips(agents: list[Agent], data_dir: str = "data") -> str:
     return final_ips
 
 
-def evolve_ips(cio_agent: Agent, db: Session, data_dir: str = "data") -> str:
+async def evolve_ips(cio_agent: Agent, db: Session, data_dir: str = "data") -> str:
     """Have the CIO review and update the IPS based on recent performance.
 
     This runs after trading sessions to adapt strategy to changing conditions.
@@ -151,7 +151,7 @@ def evolve_ips(cio_agent: Agent, db: Session, data_dir: str = "data") -> str:
         "Key constraints remain: NO shorting, NO futures, NO naked short options, PDT rules apply."
     )
 
-    updated_ips = cio_agent.respond(evolution_prompt)
+    updated_ips = await cio_agent.respond(evolution_prompt)
 
     # Save updated IPS
     ips_path.write_text(updated_ips)

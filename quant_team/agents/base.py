@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import anthropic
 from dataclasses import dataclass, field
 
@@ -26,10 +28,10 @@ class Agent:
         self.title = title
         self.system_prompt = system_prompt
         self.model = model
-        self.client = anthropic.Anthropic()
+        self.client = anthropic.AsyncAnthropic()
         self.memory: list[Message] = []
 
-    def analyze(
+    async def analyze(
         self,
         market_context: str,
         discussion: list[Message] | None = None,
@@ -57,24 +59,30 @@ class Agent:
 
         messages.append({"role": "user", "content": "\n\n".join(parts)})
 
-        response = self.client.messages.create(
-            model=self.model,
-            max_tokens=4096,
-            system=self.system_prompt,
-            messages=messages,
+        response = await asyncio.wait_for(
+            self.client.messages.create(
+                model=self.model,
+                max_tokens=4096,
+                system=self.system_prompt,
+                messages=messages,
+            ),
+            timeout=300.0,
         )
 
         result = response.content[0].text
         self.memory.append(Message(role=self.name, content=result))
         return result
 
-    def respond(self, prompt: str) -> str:
+    async def respond(self, prompt: str) -> str:
         """Simple single-turn response for IPS drafting, etc."""
-        response = self.client.messages.create(
-            model=self.model,
-            max_tokens=4096,
-            system=self.system_prompt,
-            messages=[{"role": "user", "content": prompt}],
+        response = await asyncio.wait_for(
+            self.client.messages.create(
+                model=self.model,
+                max_tokens=4096,
+                system=self.system_prompt,
+                messages=[{"role": "user", "content": prompt}],
+            ),
+            timeout=300.0,
         )
         return response.content[0].text
 

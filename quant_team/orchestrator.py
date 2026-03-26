@@ -146,7 +146,7 @@ class TeamOrchestrator:
 
         for i, agent in enumerate(analyst_agents):
             if i > 0:
-                await asyncio.sleep(30)  # Rate limit: 30k tokens/min, space out API calls
+                await asyncio.sleep(60)  # Rate limit: 30k tokens/min, space out API calls
             _progress(f"{agent.name} ({agent.title}) analyzing", 2 + i, total_steps)
             response = await agent.analyze(
                 market_context=market_context,
@@ -158,7 +158,7 @@ class TeamOrchestrator:
 
         # Step 3: Decision-maker makes final decisions
         if self.decision_agent:
-            await asyncio.sleep(30)  # Rate limit spacing
+            await asyncio.sleep(60)  # Rate limit spacing
             _progress(f"{self.decision_agent.name} making final decisions", 2 + len(analyst_agents), total_steps)
             cio_response = await self.decision_agent.analyze(
                 market_context=market_context,

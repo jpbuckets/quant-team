@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}CROSS-TEAM SUMMARY{% endblock %}
+{% block nav_summary %}nav-active{% endblock %}
+
+{% block content %}
+<div x-data="summaryApp()" x-init="init()">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h2 class="text-sm text-term-green text-glow uppercase tracking-widest">// Cross-Team Summary</h2>
+            <p class="text-[0.6rem] text-term-dim mt-1">aggregate portfolio view across all trading teams</p>
+        </div>
+    </div>
+
+    <!-- Aggregate Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <div class="bg-term-panel border border-term-border p-4 term-glow">
+            <div class="text-[0.6rem] text-term-dim uppercase tracking-wider">Total Value</div>
+            <div class="text-base text-term-green text-glow mt-1 font-semibold" x-text="'$' + fmt(aggregate.total_value)"></div>
+        </div>
+        <div class="bg-term-panel border border-term-border p-4 term-glow">
+            <div class="text-[0.6rem] text-term-dim uppercase tracking-wider">Total Cash</div>
+            <div class="text-base text-term-amber text-glow-amber mt-1 font-semibold" x-text="'$' + fmt(aggregate.cash)"></div>
+        </div>
+        <div class="bg-term-panel border border-term-border p-4 term-glow">
+            <div class="text-[0.6rem] text-term-dim uppercase tracking-wider">Unrealized P&L</div>
+            <div class="text-base mt-1 font-semibold"
+                 :class="aggregate.unrealized_pnl >= 0 ? 'text-term-green text-glow' : 'text-term-red text-glow-red'"
+                 x-text="'$' + fmt(aggregate.unrealized_pnl)"></div>
+        </div>
+        <div class="bg-term-panel border border-term-border p-4 term-glow">
+            <div class="text-[0.6rem] text-term-dim uppercase tracking-wider">Total Return</div>
+            <div class="text-base mt-1 font-semibold"
+                 :class="aggregate.total_return_pct >= 0 ? 'text-term-green text-glow' : 'text-term-red text-glow-red'"
+                 x-text="fmtPct(aggregate.total_return_pct)"></div>
+        </div>
+    </div>
+
+    <!-- Per-Team Breakdown -->
+    <div class="bg-term-panel border border-term-border term-glow">
+        <div class="px-4 py-3 border-b border-term-border flex items-center justify-between">
+            <span class="text-xs text-term-cyan text-glow-cyan uppercase tracking-wider">Team Breakdown</span>
+            <span class="text-[0.6rem] text-term-dim" x-text="teams.length + ' teams'"></span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-xs" x-show="teams.length > 0">
+                <thead class="text-term-dim border-b border-term-border text-[0.6rem] uppercase tracking-wider">
+                    <tr>
+                        <th class="text-left px-4 py-2">Team</th>
+                        <th class="text-left px-4 py-2">Asset Class</th>
+                        <th class="text-left px-4 py-2">Mode</th>
+                        <th class="text-right px-4 py-2">Value</th>
+                        <th class="text-right px-4 py-2">Unrealized P&L</th>
+                        <th class="text-right px-4 py-2">Positions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="team in teams" :key="team.team_id">
+                        <tr class="border-b border-term-border/50 term-row cursor-pointer" @click="window.location='/team/' + team.team_id">
+                            <td class="px-4 py-2 text-term-bright font-semibold hover:text-term-green transition-colors" x-text="team.name"></td>
+                            <td class="px-4 py-2 text-term-dim" x-text="team.asset_class"></td>
+                            <td class="px-4 py-2">
+                                <span class="text-[0.55rem] px-1.5 py-0.5 border font-bold"
+                                      :class="team.execution_backend === 'paper' ? 'border-term-amber text-term-amber' : 'border-term-red text-term-red'"
+                                      x-text="team.execution_backend.toUpperCase()"></span>
+                            </td>
+                            <td class="px-4 py-2 text-right text-term-green" x-text="'$' + fmt(team.total_value)"></td>
+                            <td class="px-4 py-2 text-right" :class="team.unrealized_pnl >= 0 ? 'text-term-green' : 'text-term-red'"
+                                x-text="(team.unrealized_pnl >= 0 ? '+' : '') + '$' + fmt(team.unrealized_pnl)"></td>
+                            <td class="px-4 py-2 text-right text-term-text" x-text="team.position_count || 0"></td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+        <p x-show="teams.length === 0" class="text-term-dim text-center py-8 text-xs">no teams configured</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function summaryApp() {
+    return {
+        aggregate: { total_value: 0, cash: 0, unrealized_pnl: 0, realized_pnl: 0, total_return_pct: 0 },
+        teams: [],
+        async init() {
+            const res = await fetch('/api/teams/summary');
+            if (res.ok) {
+                const data = await res.json();
+                this.aggregate = data.aggregate;
+                this.teams = data.teams;
+            }
+        },
+        fmt(n) { return (n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
+        fmtPct(n) { return (n >= 0 ? '+' : '') + (n || 0).toFixed(2) + '%'; },
+    };
+}
+</script>
+{% endblock %}

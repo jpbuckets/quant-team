@@ -244,4 +244,18 @@ async def market_page(request: Request):
     return templates.TemplateResponse(request, "market.html")
 
 
+@app.get("/summary")
+async def summary_page(request: Request):
+    if not _auth_required(request):
+        return RedirectResponse("/login", status_code=302)
+    return templates.TemplateResponse(request, "summary.html")
+
+
+@app.get("/team/{team_id}")
+async def team_detail_page(request: Request, team_id: str):
+    if not _auth_required(request):
+        return RedirectResponse("/login", status_code=302)
+    return templates.TemplateResponse(request, "team_detail.html", {"team_id": team_id})
+
+
 

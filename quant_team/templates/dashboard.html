@@ -130,36 +130,31 @@
         </div>
     </div>
 
-    <!-- Team Status -->
+    <!-- Team Cards (DASH-01: team selector) -->
     <div class="bg-term-panel border border-term-border term-glow mt-4">
-        <div class="px-4 py-3 border-b border-term-border">
-            <span class="text-xs text-term-green text-glow uppercase tracking-wider">Team Status</span>
+        <div class="px-4 py-3 border-b border-term-border flex items-center justify-between">
+            <span class="text-xs text-term-green text-glow uppercase tracking-wider">Trading Teams</span>
+            <a href="/summary" class="text-[0.6rem] text-term-dim hover:text-term-green transition-colors">[aggregate view]</a>
         </div>
-        <div class="p-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div class="border border-term-border p-3">
-                <div class="text-[0.6rem] text-term-amber uppercase tracking-wider">CIO</div>
-                <div class="text-xs text-term-bright mt-1">Chief Investment Officer</div>
-                <div class="text-[0.6rem] text-term-dim mt-0.5">final decisions, portfolio strategy</div>
-                <div class="flex items-center gap-1 mt-2"><span class="w-1 h-1 rounded-full bg-term-green"></span><span class="text-[0.6rem] text-term-greenDim">READY</span></div>
-            </div>
-            <div class="border border-term-border p-3">
-                <div class="text-[0.6rem] text-term-cyan uppercase tracking-wider">QUANT</div>
-                <div class="text-xs text-term-bright mt-1">Lead Quant Analyst</div>
-                <div class="text-[0.6rem] text-term-dim mt-0.5">technical signals, options pricing</div>
-                <div class="flex items-center gap-1 mt-2"><span class="w-1 h-1 rounded-full bg-term-green"></span><span class="text-[0.6rem] text-term-greenDim">READY</span></div>
-            </div>
-            <div class="border border-term-border p-3">
-                <div class="text-[0.6rem] text-term-red uppercase tracking-wider">RISK</div>
-                <div class="text-xs text-term-bright mt-1">Chief Risk Officer</div>
-                <div class="text-[0.6rem] text-term-dim mt-0.5">position limits, drawdown control</div>
-                <div class="flex items-center gap-1 mt-2"><span class="w-1 h-1 rounded-full bg-term-green"></span><span class="text-[0.6rem] text-term-greenDim">READY</span></div>
-            </div>
-            <div class="border border-term-border p-3">
-                <div class="text-[0.6rem] text-term-amber uppercase tracking-wider">MACRO</div>
-                <div class="text-xs text-term-bright mt-1">Macro Strategist</div>
-                <div class="text-[0.6rem] text-term-dim mt-0.5">market regime, sector rotation</div>
-                <div class="flex items-center gap-1 mt-2"><span class="w-1 h-1 rounded-full bg-term-green"></span><span class="text-[0.6rem] text-term-greenDim">READY</span></div>
-            </div>
+        <div class="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <template x-for="team in teams" :key="team.team_id">
+                <a :href="'/team/' + team.team_id" class="block border border-term-border p-4 hover:border-term-green/40 transition-colors group">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs text-term-bright font-semibold group-hover:text-term-green transition-colors" x-text="team.name"></span>
+                        <span class="text-[0.55rem] px-1.5 py-0.5 border"
+                              :class="team.execution_backend === 'paper' ? 'border-term-amber text-term-amber' : 'border-term-red text-term-red'"
+                              x-text="team.execution_backend.toUpperCase()"></span>
+                    </div>
+                    <div class="text-[0.6rem] text-term-dim" x-text="team.asset_class + ' | ' + (team.watchlist?.length || 0) + ' tickers'"></div>
+                    <div class="flex items-center gap-1 mt-2">
+                        <span class="w-1 h-1 rounded-full bg-term-green"></span>
+                        <span class="text-[0.6rem] text-term-greenDim">READY</span>
+                    </div>
+                </a>
+            </template>
+            <template x-if="teams.length === 0">
+                <div class="text-center py-4 text-term-dim text-xs col-span-full">no teams configured</div>
+            </template>
         </div>
     </div>
 </div>
@@ -171,6 +166,7 @@ function dashboardApp() {
     return {
         portfolio: { total_value: 10000, cash: 10000, unrealized_pnl: 0, total_return_pct: 0, positions: [] },
         recommendations: [],
+        teams: [],
         generating: false,
         equityChart: null,
 
@@ -181,12 +177,14 @@ function dashboardApp() {
 
         async refresh() {
             try {
-                const [pRes, rRes] = await Promise.all([
+                const [pRes, rRes, tRes] = await Promise.all([
                     fetch('/api/portfolio'),
                     fetch('/api/recommendations?limit=10'),
+                    fetch('/api/teams'),
                 ]);
                 if (pRes.ok) this.portfolio = await pRes.json();
                 if (rRes.ok) this.recommendations = await rRes.json();
+                if (tRes.ok) this.teams = await tRes.json();
                 this.updateChart();
             } catch (e) { console.error(e); }
         },

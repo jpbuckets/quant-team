@@ -15,13 +15,17 @@ The AI agent round-table produces actionable trade decisions that can be automat
 - ✓ Multi-agent orchestration (Macro → Quant → Risk → CIO pipeline) — existing
 - ✓ Market data fetching via yfinance — existing
 - ✓ Web dashboard with session history — existing
-- ✓ Authentication system (cookie-based) — existing
+- ✓ Authentication system (cookie-based, bcrypt) — Phase 1
 - ✓ SQLite persistence for sessions and recommendations — existing
 - ✓ Scheduled autonomous sessions (APScheduler) — existing
+- ✓ Async analysis pipeline with 5-min timeouts — Phase 1
+- ✓ Per-session state isolation (no race conditions) — Phase 1
+- ✓ Bcrypt password hashing — Phase 1
+- ✓ YAML-backed team registry with dynamic agent construction — Phase 1
+- ✓ team_id scoping on all DB models — Phase 1
 
 ### Active
 
-- [ ] Fix analysis button (currently hangs indefinitely with no error)
 - [ ] Multi-team architecture — independent teams with specialized agents per investment domain
 - [ ] Crypto team — agents specialized in DeFi, on-chain analysis, Solana ecosystem
 - [ ] Options team — agents specialized in Greeks, volatility, options strategies
@@ -40,10 +44,10 @@ The AI agent round-table produces actionable trade decisions that can be automat
 ## Context
 
 - **Existing codebase:** Brownfield Python project with FastAPI, Claude agents, yfinance, SQLite
-- **Critical bug:** Analyze button hangs — likely in the orchestrator → agent pipeline. No timeout, no error surfacing to UI. This is the #1 blocker.
+- **Analysis bug fixed:** Async pipeline with 5-min timeouts, per-session state isolation (Phase 1 complete).
 - **Crypto execution:** Solana ecosystem chosen — Phantom Wallet API for wallet management, Drift Protocol for perpetuals/lending, Jupiter for spot swaps. These have well-documented APIs.
 - **Stock execution:** Broker not yet chosen. Alpaca (simpler API, commission-free) and IBKR (broader access) are candidates.
-- **Architecture evolution needed:** Current single-team design (hardcoded agents in `quant_team/agents/`) needs to become a team registry where each team has its own agent configuration, prompts, and execution pipeline.
+- **Team architecture complete:** YAML-backed TeamRegistry with dynamic agent construction. New teams added via config files, no Python changes needed (Phase 1 complete).
 
 ## Constraints
 
@@ -79,4 +83,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-25 after initialization*
+*Last updated: 2026-03-26 after Phase 1 completion*

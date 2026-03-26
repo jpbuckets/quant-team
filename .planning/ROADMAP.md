@@ -13,7 +13,7 @@ Starting from a broken single-team stock analyzer, this roadmap evolves the plat
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Stabilize and Restructure** - Fix critical bugs and build team-aware foundation (team registry, scoped DB, parameterized orchestrator) (completed 2026-03-26)
-- [ ] **Phase 2: Market Data Routing** - Wire asset-class-specific data feeds so each team type gets correct market context
+- [x] **Phase 2: Market Data Routing** - Wire asset-class-specific data feeds so each team type gets correct market context (completed 2026-03-26)
 - [ ] **Phase 3: Paper Trading Execution** - Add paper execution framework with per-team mode toggle and routed execution
 - [ ] **Phase 4: Multi-Team Dashboard** - Build team-selector UI, per-team portfolio views, and cross-team summary
 
@@ -46,10 +46,10 @@ Plans:
   2. A crypto team session receives OHLCV candlestick data from a CEX via ccxt
   3. A stock team session continues to receive equity data from yfinance without regression
   4. Pointing a team at a different asset class in its config automatically routes it to the correct data source
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [x] 02-01-PLAN.md — CryptoMarketData provider + MarketDataRouter dispatch + tests
-- [ ] 02-02-PLAN.md — Wire router into orchestrator + crypto.yaml + env config
+- [x] 02-02-PLAN.md — Wire router into orchestrator + crypto.yaml + env config
 
 ### Phase 3: Paper Trading Execution
 **Goal**: All teams paper-trade by default and log every would-be trade with full detail; live mode is toggleable per team
@@ -83,6 +83,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Stabilize and Restructure | 5/5 | Complete   | 2026-03-26 |
-| 2. Market Data Routing | 1/2 | In Progress|  |
+| 2. Market Data Routing | 2/2 | Complete   | 2026-03-26 |
 | 3. Paper Trading Execution | 0/TBD | Not started | - |
 | 4. Multi-Team Dashboard | 0/TBD | Not started | - |

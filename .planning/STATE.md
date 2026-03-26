@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
-stopped_at: Completed 02-01-PLAN.md — CryptoMarketData and MarketDataRouter
-last_updated: "2026-03-26T04:20:23.872Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 02-02-PLAN.md — Router wired, crypto team config added
+last_updated: "2026-03-26T04:23:47.934Z"
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 7
-  completed_plans: 6
+  completed_plans: 7
 ---
 
 # Project State
@@ -50,6 +50,7 @@ Plan: 2 of 2
 | Phase 01-stabilize-and-restructure P03 | 69 | 1 tasks | 4 files |
 | Phase 01-stabilize-and-restructure P05 | 901 | 2 tasks | 9 files |
 | Phase 02-market-data-routing P01 | 25 | 2 tasks | 5 files |
+| Phase 02-market-data-routing P02 | 8 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,8 @@ Recent decisions affecting current work:
 - [Phase 02-01]: CryptoMarketData uses Jupiter Price API v3 (api.jup.ag) with graceful degradation on missing JUPITER_API_KEY
 - [Phase 02-01]: MarketDataRouter raises ValueError for unknown asset_class — fail-fast design
 - [Phase 02-01]: TeamConfig.exchange field added with 'binance' default; passed through to CryptoMarketData
+- [Phase 02-02]: Orchestrator passes TeamConfig to MarketDataRouter — router selects provider transparently
+- [Phase 02-02]: PDT note excluded from crypto task prompt — PDT rules are equity-specific regulations
 
 ### Pending Todos
 
@@ -86,6 +89,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T04:20:23.870Z
-Stopped at: Completed 02-01-PLAN.md — CryptoMarketData and MarketDataRouter
+Last session: 2026-03-26T04:23:47.932Z
+Stopped at: Completed 02-02-PLAN.md — Router wired, crypto team config added
 Resume file: None

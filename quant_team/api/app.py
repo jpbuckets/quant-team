@@ -75,11 +75,12 @@ def _setup_scheduler():
 def _run_scheduled_session(evolve: bool = False):
     """Run an autonomous trading session."""
     try:
+        import asyncio
         from ..orchestrator import TradingDesk
         db = get_db()
         try:
             desk = TradingDesk(db=db)
-            desk.run_trading_session(evolve_strategy=evolve)
+            asyncio.run(desk.run_trading_session(evolve_strategy=evolve))
             logger.info("Scheduled trading session completed")
         finally:
             db.close()

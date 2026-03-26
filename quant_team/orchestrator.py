@@ -41,7 +41,7 @@ class TradingDesk:
         self.pdt_checker = PDTChecker(db)
         self.portfolio = PortfolioManager(db, self.market)
 
-    def run_trading_session(
+    async def run_trading_session(
         self, tickers: list[str] | None = None, evolve_strategy: bool = False,
         on_progress: callable | None = None,
     ) -> list[Recommendation]:
@@ -116,7 +116,7 @@ class TradingDesk:
 
         for i, (key, agent, label) in enumerate(agent_order):
             _progress(label, 2 + i, 6)
-            response = agent.analyze(
+            response = await agent.analyze(
                 market_context=market_context,
                 discussion=discussion,
                 task=task_prompt,
@@ -126,7 +126,7 @@ class TradingDesk:
 
         # Step 3: CIO makes final decisions
         _progress("CIO making final decisions", 5, 6)
-        cio_response = self.cio_agent.analyze(
+        cio_response = await self.cio_agent.analyze(
             market_context=market_context,
             discussion=discussion,
             task=(
@@ -172,7 +172,7 @@ class TradingDesk:
         if evolve_strategy:
             try:
                 from .strategy.ips import evolve_ips
-                evolve_ips(self.cio_agent, self.db)
+                await evolve_ips(self.cio_agent, self.db)
             except Exception:
                 pass  # Don't fail the session if evolution fails
 

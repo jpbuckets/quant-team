@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import uuid
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 
@@ -16,8 +18,7 @@ logger = logging.getLogger("quant_team")
 
 router = APIRouter(prefix="/api/recommendations", tags=["trades"])
 
-_generating = False
-_progress: dict = {"step": "", "step_num": 0, "total_steps": 6}
+_sessions: dict[str, dict] = {}
 
 
 def _rec_to_dict(rec: Recommendation) -> dict:
@@ -106,52 +107,46 @@ def pdt_status():
         db.close()
 
 
-_last_error: str | None = None
-
-
-def _on_progress(step: str, step_num: int, total_steps: int):
-    global _progress
-    _progress = {"step": step, "step_num": step_num, "total_steps": total_steps}
+def _update_progress(session_id: str, step: str, step_num: int, total_steps: int) -> None:
+    if session_id in _sessions:
+        _sessions[session_id]["progress"] = {"step": step, "step_num": step_num, "total_steps": total_steps}
     logger.info(f"Progress [{step_num}/{total_steps}]: {step}")
 
 
-def _run_session(tickers: list[str] | None):
-    global _generating, _last_error, _progress
-    _generating = True
-    _last_error = None
-    _progress = {"step": "Starting...", "step_num": 0, "total_steps": 6}
+async def _run_session(session_id: str, tickers: list[str] | None) -> None:
+    _sessions[session_id] = {"generating": True, "error": None, "progress": {"step": "Starting...", "step_num": 0, "total_steps": 6}}
     try:
         db = get_db()
         try:
             desk = TradingDesk(db=db, tickers=tickers)
-            desk.run_trading_session(tickers, on_progress=_on_progress)
-            _progress = {"step": "Complete", "step_num": 6, "total_steps": 6}
+            await desk.run_trading_session(tickers, on_progress=lambda s, n, t: _update_progress(session_id, s, n, t))
+            _sessions[session_id]["progress"] = {"step": "Complete", "step_num": 6, "total_steps": 6}
             logger.info("Trading session completed successfully")
         finally:
             db.close()
+    except asyncio.TimeoutError:
+        _sessions[session_id]["error"] = "Analysis timed out after 5 minutes"
     except Exception as e:
-        _last_error = str(e)
+        _sessions[session_id]["error"] = str(e)
         logger.error(f"Trading session failed: {e}", exc_info=True)
     finally:
-        _generating = False
+        _sessions[session_id]["generating"] = False
 
 
 @router.get("/status")
 def generation_status():
-    return {
-        "generating": _generating,
-        "error": _last_error,
-        "progress": _progress,
-    }
+    # Return status of most recent session or default
+    if not _sessions:
+        return {"generating": False, "error": None, "progress": {"step": "", "step_num": 0, "total_steps": 6}}
+    latest_id = list(_sessions.keys())[-1]
+    s = _sessions[latest_id]
+    return {"generating": s["generating"], "error": s["error"], "progress": s["progress"], "session_id": latest_id}
 
 
 @router.post("/generate")
-def run_trading_session(
-    body: GenerateRequest,
-    background_tasks: BackgroundTasks,
-):
-    global _generating
-    if _generating:
+async def run_trading_session(body: GenerateRequest, background_tasks: BackgroundTasks):
+    if any(s["generating"] for s in _sessions.values()):
         raise HTTPException(status_code=409, detail="Session already in progress")
-    background_tasks.add_task(_run_session, body.tickers)
-    return {"status": "started", "message": "Trading session started — decisions will auto-execute"}
+    session_id = str(uuid.uuid4())
+    background_tasks.add_task(_run_session, session_id, body.tickers)
+    return {"status": "started", "session_id": session_id, "message": "Trading session started — decisions will auto-execute"}

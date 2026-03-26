@@ -32,10 +32,10 @@ class PortfolioManager:
             self.db.commit()
         return state
 
-    def get_open_positions(self) -> list[PortfolioPosition]:
+    def get_open_positions(self, team_id: str = "quant") -> list[PortfolioPosition]:
         return (
             self.db.query(PortfolioPosition)
-            .filter(PortfolioPosition.status == "open")
+            .filter(PortfolioPosition.status == "open", PortfolioPosition.team_id == team_id)
             .all()
         )
 
@@ -202,10 +202,10 @@ class PortfolioManager:
 
         return trade
 
-    def check_stops(self) -> list[TradeRecord]:
+    def check_stops(self, team_id: str = "quant") -> list[TradeRecord]:
         """Check stop-loss and take-profit on open positions."""
         closed = []
-        for pos in self.get_open_positions():
+        for pos in self.get_open_positions(team_id=team_id):
             if pos.position_type != "shares":
                 continue
 
@@ -226,10 +226,10 @@ class PortfolioManager:
 
         return closed
 
-    def get_current_value(self) -> dict:
+    def get_current_value(self, team_id: str = "quant") -> dict:
         """Calculate current portfolio value with live prices."""
-        state = self.get_state()
-        positions = self.get_open_positions()
+        state = self.get_state(team_id=team_id)
+        positions = self.get_open_positions(team_id=team_id)
 
         total_invested = 0.0
         total_unrealized = 0.0
@@ -327,22 +327,23 @@ class PortfolioManager:
 
         return "\n".join(lines)
 
-    def take_snapshot(self) -> PortfolioSnapshot:
-        data = self.get_current_value()
+    def take_snapshot(self, team_id: str = "quant") -> PortfolioSnapshot:
+        data = self.get_current_value(team_id=team_id)
         snapshot = PortfolioSnapshot(
             total_value=data["total_value"], cash=data["cash"],
             invested=data["invested"], unrealized_pnl=data["unrealized_pnl"],
             realized_pnl=data["realized_pnl"], total_return_pct=data["total_return_pct"],
+            team_id=team_id,
         )
         self.db.add(snapshot)
         self.db.commit()
         return snapshot
 
-    def reset(self) -> None:
-        for pos in self.get_open_positions():
+    def reset(self, team_id: str = "quant") -> None:
+        for pos in self.get_open_positions(team_id=team_id):
             pos.status = "closed"
             pos.closed_at = datetime.utcnow()
-        state = self.get_state()
+        state = self.get_state(team_id=team_id)
         state.cash = 10000.0
         state.initial_capital = 10000.0
         state.peak_value = 10000.0

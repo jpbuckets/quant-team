@@ -11,15 +11,13 @@ router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
 
 @router.get("")
-def list_sessions(limit: int = 20):
+def list_sessions(limit: int = 20, team_id: str | None = None):
     db = get_db()
     try:
-        sessions = (
-            db.query(AgentSession)
-            .order_by(AgentSession.timestamp.desc())
-            .limit(limit)
-            .all()
-        )
+        query = db.query(AgentSession).order_by(AgentSession.timestamp.desc())
+        if team_id is not None:
+            query = query.filter(AgentSession.team_id == team_id)
+        sessions = query.limit(limit).all()
         return [
             {
                 "id": s.id,
@@ -34,14 +32,13 @@ def list_sessions(limit: int = 20):
 
 
 @router.get("/latest")
-def get_latest_session():
+def get_latest_session(team_id: str | None = None):
     db = get_db()
     try:
-        session = (
-            db.query(AgentSession)
-            .order_by(AgentSession.timestamp.desc())
-            .first()
-        )
+        query = db.query(AgentSession).order_by(AgentSession.timestamp.desc())
+        if team_id is not None:
+            query = query.filter(AgentSession.team_id == team_id)
+        session = query.first()
         if session is None:
             raise HTTPException(status_code=404, detail="No sessions found")
         return {

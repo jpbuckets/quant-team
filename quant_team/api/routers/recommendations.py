@@ -55,6 +55,7 @@ def list_trades(
     status: str | None = None,
     ticker: str | None = None,
     limit: int = 50,
+    team_id: str | None = None,
 ):
     db = get_db()
     try:
@@ -63,6 +64,8 @@ def list_trades(
             query = query.filter(Recommendation.status == status)
         if ticker:
             query = query.filter(Recommendation.ticker == ticker.upper())
+        if team_id is not None:
+            query = query.filter(Recommendation.team_id == team_id)
         recs = query.limit(limit).all()
         return [_rec_to_dict(r) for r in recs]
     finally:
@@ -70,14 +73,13 @@ def list_trades(
 
 
 @router.get("/performance")
-def trade_performance():
+def trade_performance(team_id: str | None = None):
     db = get_db()
     try:
-        closed = (
-            db.query(Recommendation)
-            .filter(Recommendation.outcome_pnl.isnot(None))
-            .all()
-        )
+        query = db.query(Recommendation).filter(Recommendation.outcome_pnl.isnot(None))
+        if team_id is not None:
+            query = query.filter(Recommendation.team_id == team_id)
+        closed = query.all()
         if not closed:
             return {"total": 0, "wins": 0, "losses": 0, "win_rate": 0, "total_pnl": 0, "avg_pnl": 0}
 

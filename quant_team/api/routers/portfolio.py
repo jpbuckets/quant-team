@@ -14,22 +14,23 @@ router = APIRouter(prefix="/api/portfolio", tags=["portfolio"])
 
 
 @router.get("")
-def get_portfolio():
+def get_portfolio(team_id: str = "quant"):
     db = get_db()
     try:
         market = StockMarketData()
         pm = PortfolioManager(db, market)
-        return pm.get_current_value()
+        return pm.get_current_value(team_id=team_id)
     finally:
         db.close()
 
 
 @router.get("/history")
-def get_portfolio_history(limit: int = 200):
+def get_portfolio_history(limit: int = 200, team_id: str = "quant"):
     db = get_db()
     try:
         snapshots = (
             db.query(PortfolioSnapshot)
+            .filter(PortfolioSnapshot.team_id == team_id)
             .order_by(PortfolioSnapshot.timestamp.desc())
             .limit(limit)
             .all()
@@ -48,11 +49,12 @@ def get_portfolio_history(limit: int = 200):
 
 
 @router.get("/trades")
-def get_trade_history(limit: int = 50):
+def get_trade_history(limit: int = 50, team_id: str = "quant"):
     db = get_db()
     try:
         trades = (
             db.query(TradeRecord)
+            .filter(TradeRecord.team_id == team_id)
             .order_by(TradeRecord.timestamp.desc())
             .limit(limit)
             .all()
@@ -77,7 +79,7 @@ def get_trade_history(limit: int = 50):
 
 
 @router.post("/positions/{position_id}/close")
-def close_position(position_id: int):
+def close_position(position_id: int, team_id: str = "quant"):
     db = get_db()
     try:
         market = StockMarketData()
@@ -95,24 +97,24 @@ def close_position(position_id: int):
 
 
 @router.post("/reset")
-def reset_portfolio():
+def reset_portfolio(team_id: str = "quant"):
     db = get_db()
     try:
         market = StockMarketData()
         pm = PortfolioManager(db, market)
-        pm.reset()
+        pm.reset(team_id=team_id)
         return {"status": "reset", "cash": 10000.0}
     finally:
         db.close()
 
 
 @router.post("/snapshot")
-def take_snapshot():
+def take_snapshot(team_id: str = "quant"):
     db = get_db()
     try:
         market = StockMarketData()
         pm = PortfolioManager(db, market)
-        snapshot = pm.take_snapshot()
+        snapshot = pm.take_snapshot(team_id=team_id)
         return {"status": "ok", "total_value": snapshot.total_value}
     finally:
         db.close()

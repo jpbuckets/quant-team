@@ -263,12 +263,14 @@ from .routers.recommendations import router as rec_router
 from .routers.portfolio import router as portfolio_router
 from .routers.market import router as market_router
 from .routers.sessions import router as sessions_router
+from .routers.research import router as research_router
 from .routers import teams
 
 app.include_router(rec_router)
 app.include_router(portfolio_router)
 app.include_router(market_router)
 app.include_router(sessions_router)
+app.include_router(research_router)
 app.include_router(teams.router, prefix="/api/teams", tags=["teams"])
 
 
@@ -347,6 +349,13 @@ async def analysis_page(request: Request):
     if not _auth_required(request):
         return RedirectResponse("/login", status_code=302)
     return templates.TemplateResponse(request, "analysis.html")
+
+
+@app.get("/research")
+async def research_page(request: Request):
+    if not _auth_required(request):
+        return RedirectResponse("/login", status_code=302)
+    return templates.TemplateResponse(request, "research.html")
 
 
 @app.get("/market")

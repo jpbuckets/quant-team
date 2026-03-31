@@ -119,3 +119,8 @@ class QuoteOut(BaseModel):
 
 class GenerateRequest(BaseModel):
     tickers: list[str] | None = None
+
+
+class ResearchRequest(BaseModel):
+    question: str
+    team_id: str = "quant"

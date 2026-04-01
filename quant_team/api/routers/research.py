@@ -106,86 +106,247 @@ def _sanitize(text: str) -> str:
     return text.translate(_UNICODE_MAP).encode("latin-1", errors="replace").decode("latin-1")
 
 
+def _extract_cio_sections(cio_text: str) -> dict[str, str]:
+    """Parse structured sections from CIO output."""
+    sections: dict[str, str] = {}
+    current_key = ""
+    current_lines: list[str] = []
+    markers = {
+        "KEY FINDINGS": "key_findings",
+        "OPPORTUNITIES": "opportunities",
+        "RISKS": "risks",
+        "ACTIONABLE IDEAS": "actionable_ideas",
+    }
+    for line in cio_text.split("\n"):
+        stripped = line.strip().strip("*").strip("#").strip()
+        matched = False
+        for marker, key in markers.items():
+            if marker in stripped.upper():
+                if current_key:
+                    sections[current_key] = "\n".join(current_lines).strip()
+                current_key = key
+                current_lines = []
+                matched = True
+                break
+        if not matched:
+            current_lines.append(line)
+    if current_key:
+        sections[current_key] = "\n".join(current_lines).strip()
+    return sections
+
+
+# -- Colors matching the terminal theme --
+_GREEN = (0, 180, 65)
+_GREEN_DARK = (0, 60, 25)
+_GREEN_DIM = (0, 120, 45)
+_AMBER = (200, 140, 0)
+_CYAN = (0, 150, 190)
+_RED = (200, 50, 50)
+_DARK = (20, 28, 40)
+_DIM = (100, 110, 120)
+_TEXT = (40, 45, 50)
+
+
 def _build_research_pdf(result: dict) -> bytes:
-    """Build a formatted PDF from research session results."""
+    """Build a branded PDF from research session results."""
     pdf = FPDF()
-    pdf.set_auto_page_break(auto=True, margin=20)
+    pdf.set_auto_page_break(auto=True, margin=30)
     pdf.add_page()
 
-    # --- Title ---
-    pdf.set_font("Helvetica", "B", 20)
-    pdf.set_text_color(0, 80, 40)
-    pdf.cell(0, 12, "Quant Team Research Report", new_x="LMARGIN", new_y="NEXT")
-    pdf.set_draw_color(0, 180, 80)
-    pdf.set_line_width(0.6)
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    question = result.get("question", "")
+    tickers = result.get("tickers_analyzed", [])
+    cio_text = result.get("cio", "")
+    cio_sections = _extract_cio_sections(cio_text)
+
+    # =====================================================================
+    #  HEADER — dark banner with ASCII branding
+    # =====================================================================
+    banner_h = 38
+    pdf.set_fill_color(*_DARK)
+    pdf.rect(0, 0, 210, banner_h, style="F")
+
+    # Green accent line under banner
+    pdf.set_fill_color(*_GREEN)
+    pdf.rect(0, banner_h, 210, 1.2, style="F")
+
+    # ASCII logo
+    pdf.set_y(8)
+    pdf.set_font("Courier", "B", 16)
+    pdf.set_text_color(*_GREEN)
+    pdf.cell(0, 7, "  > QUANT_TEAM", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Courier", "", 8)
+    pdf.set_text_color(120, 140, 120)
+    pdf.cell(0, 4, "    // research report  |  multi-agent analysis terminal", new_x="LMARGIN", new_y="NEXT")
+
+    # Timestamp and tickers — right-aligned in header
+    pdf.set_y(10)
+    pdf.set_font("Courier", "", 7)
+    pdf.set_text_color(100, 120, 100)
+    pdf.cell(0, 4, timestamp, align="R", new_x="LMARGIN", new_y="NEXT")
+    if tickers:
+        pdf.cell(0, 4, "  ".join(tickers), align="R", new_x="LMARGIN", new_y="NEXT")
+
+    pdf.set_y(banner_h + 6)
+
+    # =====================================================================
+    #  RESEARCH QUESTION
+    # =====================================================================
+    if question:
+        pdf.set_font("Courier", "B", 8)
+        pdf.set_text_color(*_GREEN_DIM)
+        pdf.cell(0, 5, "> QUERY", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("Helvetica", "", 11)
+        pdf.set_text_color(*_DARK)
+        pdf.multi_cell(0, 5.5, _sanitize(question))
+        pdf.ln(5)
+
+    # =====================================================================
+    #  EXECUTIVE SUMMARY BOX — key takeaways + trade recommendations
+    # =====================================================================
+    _render_summary_box(pdf, cio_sections, cio_text)
+
+    # =====================================================================
+    #  FULL AGENT ANALYSIS
+    # =====================================================================
+    pdf.set_font("Courier", "B", 9)
+    pdf.set_text_color(*_GREEN_DIM)
+    pdf.cell(0, 6, "> FULL AGENT ANALYSIS", new_x="LMARGIN", new_y="NEXT")
+
+    # Thin green rule
+    pdf.set_draw_color(*_GREEN)
+    pdf.set_line_width(0.3)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(4)
 
-    # --- Metadata ---
-    pdf.set_font("Helvetica", "", 9)
-    pdf.set_text_color(100, 100, 100)
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    pdf.cell(0, 5, f"Generated: {timestamp}", new_x="LMARGIN", new_y="NEXT")
-    pdf.ln(2)
-
-    # --- Question ---
-    question = result.get("question", "")
-    if question:
-        pdf.set_font("Helvetica", "B", 11)
-        pdf.set_text_color(40, 40, 40)
-        pdf.cell(0, 7, "Research Question", new_x="LMARGIN", new_y="NEXT")
-        pdf.set_font("Helvetica", "I", 10)
-        pdf.set_text_color(60, 60, 60)
-        pdf.multi_cell(0, 5, _sanitize(question))
-        pdf.ln(4)
-
-    # --- Tickers ---
-    tickers = result.get("tickers_analyzed", [])
-    if tickers:
-        pdf.set_font("Helvetica", "B", 9)
-        pdf.set_text_color(0, 120, 60)
-        pdf.cell(0, 6, f"Tickers Analyzed:  {', '.join(tickers)}", new_x="LMARGIN", new_y="NEXT")
-        pdf.ln(4)
-
-    # --- Agent Sections ---
-    sections = [
-        ("MACRO  //  Senior Macro Strategist", "macro", (180, 120, 0)),
-        ("QUANT  //  Lead Quantitative Analyst", "quant", (0, 140, 180)),
-        ("RISK  //  Chief Risk Officer", "risk", (200, 50, 50)),
-        ("CIO  //  Research Summary", "cio", (0, 160, 60)),
+    agent_sections = [
+        ("MACRO  //  Senior Macro Strategist", "macro", _AMBER),
+        ("QUANT  //  Lead Quantitative Analyst", "quant", _CYAN),
+        ("RISK  //  Chief Risk Officer", "risk", _RED),
+        ("CIO  //  Chief Investment Officer", "cio", _GREEN),
     ]
 
-    for title, key, color in sections:
+    for title, key, color in agent_sections:
         text = result.get(key, "")
         if not text:
             continue
 
-        # Section header with colored bar
+        # Agent header — colored bar + monospace label
         pdf.set_fill_color(*color)
-        pdf.rect(10, pdf.get_y(), 3, 7, style="F")
-        pdf.set_x(16)
-        pdf.set_font("Helvetica", "B", 11)
+        pdf.rect(10, pdf.get_y(), 2.5, 6, style="F")
+        pdf.set_x(15)
+        pdf.set_font("Courier", "B", 9)
         pdf.set_text_color(*color)
-        pdf.cell(0, 7, title, new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(0, 6, title, new_x="LMARGIN", new_y="NEXT")
         pdf.ln(1)
 
-        # Body text
-        pdf.set_font("Helvetica", "", 9)
-        pdf.set_text_color(40, 40, 40)
+        # Body
+        pdf.set_font("Helvetica", "", 8.5)
+        pdf.set_text_color(*_TEXT)
         cleaned = _sanitize(text.replace("\r\n", "\n").replace("\r", "\n"))
-        pdf.multi_cell(0, 4.5, cleaned)
+        pdf.multi_cell(0, 4.2, cleaned)
         pdf.ln(5)
 
-    # --- Footer on every page ---
+    # =====================================================================
+    #  FOOTER on every page
+    # =====================================================================
+    pdf.set_auto_page_break(auto=False)
     page_count = pdf.pages_count
     for i in range(1, page_count + 1):
         pdf.page = i
-        pdf.set_y(-15)
-        pdf.set_font("Helvetica", "I", 7)
-        pdf.set_text_color(150, 150, 150)
-        pdf.cell(0, 10, f"Quant Team Research  |  Page {i}/{page_count}", align="C")
+        # Dark footer bar
+        pdf.set_fill_color(*_DARK)
+        pdf.rect(0, 284, 210, 13, style="F")
+        pdf.set_fill_color(*_GREEN)
+        pdf.rect(0, 284, 210, 0.5, style="F")
+        pdf.set_y(286)
+        pdf.set_font("Courier", "", 6.5)
+        pdf.set_text_color(*_GREEN)
+        pdf.cell(95, 4, "  > QUANT_TEAM // terminal", new_x="RIGHT")
+        pdf.set_text_color(100, 120, 100)
+        pdf.cell(95, 4, f"page {i}/{page_count}  |  {timestamp}", align="R")
 
     return pdf.output()
+
+
+def _render_summary_box(pdf: FPDF, sections: dict[str, str], cio_text: str) -> None:
+    """Render the executive summary box with key takeaways and trade recs."""
+    key_findings = sections.get("key_findings", "")
+    actionable = sections.get("actionable_ideas", "")
+    risks = sections.get("risks", "")
+
+    if not key_findings and not actionable:
+        return
+
+    # Box background — light green tint
+    box_y = pdf.get_y()
+    pdf.set_fill_color(240, 250, 242)
+    pdf.set_draw_color(*_GREEN)
+    pdf.set_line_width(0.4)
+
+    # We need to calculate height, so render into a temp position
+    # Use a fixed generous estimate then draw box behind
+    start_y = box_y
+
+    # Draw box border (left accent bar)
+    pdf.set_fill_color(*_GREEN)
+    pdf.rect(10, start_y, 2.5, 3, style="F")  # placeholder, will extend
+
+    pdf.set_x(15)
+    pdf.set_font("Courier", "B", 10)
+    pdf.set_text_color(*_GREEN_DARK)
+    pdf.cell(0, 6, "> EXECUTIVE SUMMARY", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(1)
+
+    # Key Takeaways
+    if key_findings:
+        pdf.set_x(15)
+        pdf.set_font("Courier", "B", 8)
+        pdf.set_text_color(*_DARK)
+        pdf.cell(0, 5, "KEY TAKEAWAYS", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_x(15)
+        pdf.set_font("Helvetica", "", 9)
+        pdf.set_text_color(*_TEXT)
+        pdf.multi_cell(180, 4.5, _sanitize(key_findings))
+        pdf.ln(3)
+
+    # Trade Recommendations
+    if actionable:
+        pdf.set_x(15)
+        pdf.set_font("Courier", "B", 8)
+        pdf.set_text_color(*_GREEN_DARK)
+        pdf.cell(0, 5, "TRADE RECOMMENDATIONS", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_x(15)
+        pdf.set_font("Helvetica", "", 9)
+        pdf.set_text_color(*_TEXT)
+        pdf.multi_cell(180, 4.5, _sanitize(actionable))
+        pdf.ln(3)
+
+    # Key Risks (brief)
+    if risks:
+        pdf.set_x(15)
+        pdf.set_font("Courier", "B", 8)
+        pdf.set_text_color(*_RED)
+        pdf.cell(0, 5, "KEY RISKS", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_x(15)
+        pdf.set_font("Helvetica", "", 9)
+        pdf.set_text_color(*_TEXT)
+        pdf.multi_cell(180, 4.5, _sanitize(risks))
+        pdf.ln(2)
+
+    end_y = pdf.get_y()
+
+    # Draw the green accent bar the full height of the summary box
+    pdf.set_fill_color(*_GREEN)
+    pdf.rect(10, start_y, 2.5, end_y - start_y, style="F")
+
+    # Draw a light background behind the box (rendered below text, so we
+    # draw a subtle bottom border instead to avoid overlapping)
+    pdf.set_draw_color(200, 220, 200)
+    pdf.set_line_width(0.3)
+    pdf.line(10, end_y + 1, 200, end_y + 1)
+
+    pdf.ln(6)
 
 
 @router.get("/export-pdf")

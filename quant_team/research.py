@@ -179,6 +179,19 @@ class ResearchSession:
                 f"## RESEARCH QUESTION\n{question}"
             )
 
+        # Build a price reminder that gets embedded in every agent task prompt
+        # This is the strongest defense against training data prices
+        if live_quotes:
+            price_reminder = (
+                f"\n\nCRITICAL — Today is {now}. Current live prices:\n"
+                + "\n".join(live_quotes)
+                + "\nYour analysis MUST use these exact prices. Any price you cite "
+                "must match the data above. Do NOT use prices from your training data "
+                "— they are months out of date."
+            )
+        else:
+            price_reminder = f"\n\nToday is {now}."
+
         # Step 3: Run agent round-table
         discussion: list[Message] = []
         analyses: dict[str, str] = {}
@@ -189,16 +202,15 @@ class ResearchSession:
             if i > 0:
                 await asyncio.sleep(60)  # Rate limit spacing
             _progress(f"{agent.name} ({agent.title}) analyzing", 3 + i, total_steps)
+            # Disable memory for research sessions — prevents stale data anchoring
+            agent.memory.clear()
             response = await agent.analyze(
                 market_context=market_context,
                 discussion=discussion,
                 task=(
                     f"A user has asked your team a research question. Analyze it from "
-                    f"your perspective as {agent.title}. Provide detailed, actionable insights.\n\n"
-                    f"IMPORTANT: The Market Data section above contains LIVE prices fetched "
-                    f"moments ago. Use these exact prices and figures in your analysis — do NOT "
-                    f"rely on older prices from your training data. Cite specific current prices, "
-                    f"percentage changes, and levels from the provided data.\n\n"
+                    f"your perspective as {agent.title}. Provide detailed, actionable insights."
+                    f"{price_reminder}\n\n"
                     f"Question: {question}"
                 ),
             )
@@ -210,6 +222,7 @@ class ResearchSession:
             if analyst_agents:
                 await asyncio.sleep(60)
             _progress(f"{decision_agent.name} synthesizing", total_steps - 1, total_steps)
+            decision_agent.memory.clear()
             response = await decision_agent.analyze(
                 market_context=market_context,
                 discussion=discussion,
@@ -219,10 +232,8 @@ class ResearchSession:
                     f"**KEY FINDINGS** — What the data and your team's analysis reveals\n"
                     f"**OPPORTUNITIES** — Specific investment opportunities identified\n"
                     f"**RISKS** — Key risks and concerns to watch\n"
-                    f"**ACTIONABLE IDEAS** — Concrete next steps or trades to consider\n\n"
-                    f"IMPORTANT: The Market Data section above contains LIVE prices fetched "
-                    f"moments ago. Reference these exact current prices in your synthesis — "
-                    f"do NOT use older prices from your training data.\n\n"
+                    f"**ACTIONABLE IDEAS** — Concrete next steps or trades to consider"
+                    f"{price_reminder}\n\n"
                     f"Do NOT output JSON trade blocks. This is a research session, not a trading session.\n\n"
                     f"Question: {question}"
                 ),

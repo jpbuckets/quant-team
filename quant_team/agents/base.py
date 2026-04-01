@@ -40,23 +40,26 @@ class Agent:
         """Have this agent analyze data and contribute to the discussion."""
         messages = []
 
-        # Build the user message — market data FIRST so the model reads
-        # live prices before seeing the question and forming its answer
+        # Build the user message — order matters for model attention:
+        # 1. Market data (live prices) — first thing the model reads
+        # 2. Discussion (prior agents) — middle context
+        # 3. Memory (past sessions) — historical context
+        # 4. Task (instructions + price reminder) — LAST, closest to generation
         parts = []
         parts.append(f"## Market Data & Indicators\n{market_context}")
-        if task:
-            parts.append(f"## Task\n{task}")
 
         if discussion:
             parts.append("## Team Discussion So Far")
             for msg in discussion:
                 parts.append(f"**{msg.role}**: {msg.content}")
 
-        # Include agent's own memory of past sessions
         if self.memory:
             parts.append("## Your Notes from Previous Sessions")
-            for mem in self.memory[-5:]:  # last 5 memories
+            for mem in self.memory[-5:]:
                 parts.append(mem.content)
+
+        if task:
+            parts.append(f"## Task\n{task}")
 
         messages.append({"role": "user", "content": "\n\n".join(parts)})
 

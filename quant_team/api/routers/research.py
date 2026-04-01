@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import io
 import logging
-import textwrap
 import uuid
 from datetime import datetime, timezone
 
@@ -94,6 +93,19 @@ def research_status():
     }
 
 
+_UNICODE_MAP = str.maketrans({
+    "\u2018": "'", "\u2019": "'", "\u201c": '"', "\u201d": '"',
+    "\u2013": "-", "\u2014": "--", "\u2022": "*", "\u2026": "...",
+    "\u2032": "'", "\u2033": '"', "\u00a0": " ", "\u200b": "",
+    "\u2010": "-", "\u2011": "-", "\u2012": "-",
+})
+
+
+def _sanitize(text: str) -> str:
+    """Replace Unicode characters unsupported by PDF built-in fonts."""
+    return text.translate(_UNICODE_MAP).encode("latin-1", errors="replace").decode("latin-1")
+
+
 def _build_research_pdf(result: dict) -> bytes:
     """Build a formatted PDF from research session results."""
     pdf = FPDF()
@@ -124,7 +136,7 @@ def _build_research_pdf(result: dict) -> bytes:
         pdf.cell(0, 7, "Research Question", new_x="LMARGIN", new_y="NEXT")
         pdf.set_font("Helvetica", "I", 10)
         pdf.set_text_color(60, 60, 60)
-        pdf.multi_cell(0, 5, question)
+        pdf.multi_cell(0, 5, _sanitize(question))
         pdf.ln(4)
 
     # --- Tickers ---
@@ -160,8 +172,7 @@ def _build_research_pdf(result: dict) -> bytes:
         # Body text
         pdf.set_font("Helvetica", "", 9)
         pdf.set_text_color(40, 40, 40)
-        # Clean up text — handle long lines for PDF wrapping
-        cleaned = text.replace("\r\n", "\n").replace("\r", "\n")
+        cleaned = _sanitize(text.replace("\r\n", "\n").replace("\r", "\n"))
         pdf.multi_cell(0, 4.5, cleaned)
         pdf.ln(5)
 

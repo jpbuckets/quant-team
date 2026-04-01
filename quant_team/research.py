@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from datetime import datetime, timezone
 
 import anthropic
 
@@ -25,13 +26,18 @@ async def extract_tickers(question: str) -> list[str]:
                 model="claude-haiku-4-5-20251001",
                 max_tokens=256,
                 system=(
-                    "You extract stock tickers, ETFs, and index symbols from questions about "
-                    "markets, economics, and investing. Return ONLY a JSON array of uppercase "
-                    "ticker symbols. If no specific tickers are relevant, return related ETFs "
-                    "or sector funds. Examples:\n"
-                    '- "What does the corn farming report mean?" -> ["CORN", "DBA", "ADM", "DE", "MOS"]\n'
+                    "You extract ticker symbols from questions about markets, economics, "
+                    "and investing. Include stocks, ETFs, index symbols, AND commodity "
+                    "futures (Yahoo Finance format: GC=F for gold, SI=F for silver, "
+                    "CL=F for crude oil, NG=F for natural gas, ZC=F for corn, ZW=F for "
+                    "wheat, ZS=F for soybeans, HG=F for copper, PL=F for platinum). "
+                    "Return ONLY a JSON array of uppercase ticker symbols. Always include "
+                    "both the futures contract AND relevant ETFs/stocks. Examples:\n"
+                    '- "What does the corn farming report mean?" -> ["ZC=F", "CORN", "DBA", "ADM", "DE"]\n'
+                    '- "What is happening with silver?" -> ["SI=F", "SLV", "SIVR", "AG", "PAAS"]\n'
                     '- "How will Fed rate cuts affect banks?" -> ["XLF", "KRE", "JPM", "BAC", "GS"]\n'
-                    '- "Is AI still a good investment?" -> ["NVDA", "MSFT", "GOOGL", "AMD", "SMH"]\n'
+                    '- "What about gold prices?" -> ["GC=F", "GLD", "IAU", "NEM", "GOLD"]\n'
+                    '- "Oil market outlook" -> ["CL=F", "USO", "XLE", "XOP", "CVX"]\n'
                     "Return only the JSON array, nothing else."
                 ),
                 messages=[{"role": "user", "content": question}],
@@ -95,11 +101,14 @@ class ResearchSession:
                 except Exception:
                     pass
 
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
         if market_context_parts:
-            market_context = "\n".join(market_context_parts)
+            market_context = f"# Market Data (fetched live at {now})\n\n"
+            market_context += "\n".join(market_context_parts)
             market_context += f"\n\n## RESEARCH QUESTION\n{question}"
         else:
             market_context = (
+                f"Data as of: {now}\n\n"
                 "No specific market data available for this question. "
                 "Answer based on your expertise and general market knowledge.\n\n"
                 f"## RESEARCH QUESTION\n{question}"

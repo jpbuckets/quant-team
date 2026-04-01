@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 import asyncio
+import io
 import logging
+import textwrap
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi.responses import StreamingResponse
+from fpdf import FPDF
 
 from ...teams.registry import TeamRegistry
 from ...research import ResearchSession
@@ -87,3 +92,113 @@ def research_status():
         "progress": s["progress"],
         "session_id": latest_id,
     }
+
+
+def _build_research_pdf(result: dict) -> bytes:
+    """Build a formatted PDF from research session results."""
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=20)
+    pdf.add_page()
+
+    # --- Title ---
+    pdf.set_font("Helvetica", "B", 20)
+    pdf.set_text_color(0, 80, 40)
+    pdf.cell(0, 12, "Quant Team Research Report", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_draw_color(0, 180, 80)
+    pdf.set_line_width(0.6)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(4)
+
+    # --- Metadata ---
+    pdf.set_font("Helvetica", "", 9)
+    pdf.set_text_color(100, 100, 100)
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    pdf.cell(0, 5, f"Generated: {timestamp}", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(2)
+
+    # --- Question ---
+    question = result.get("question", "")
+    if question:
+        pdf.set_font("Helvetica", "B", 11)
+        pdf.set_text_color(40, 40, 40)
+        pdf.cell(0, 7, "Research Question", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("Helvetica", "I", 10)
+        pdf.set_text_color(60, 60, 60)
+        pdf.multi_cell(0, 5, question)
+        pdf.ln(4)
+
+    # --- Tickers ---
+    tickers = result.get("tickers_analyzed", [])
+    if tickers:
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.set_text_color(0, 120, 60)
+        pdf.cell(0, 6, f"Tickers Analyzed:  {', '.join(tickers)}", new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(4)
+
+    # --- Agent Sections ---
+    sections = [
+        ("MACRO  //  Senior Macro Strategist", "macro", (180, 120, 0)),
+        ("QUANT  //  Lead Quantitative Analyst", "quant", (0, 140, 180)),
+        ("RISK  //  Chief Risk Officer", "risk", (200, 50, 50)),
+        ("CIO  //  Research Summary", "cio", (0, 160, 60)),
+    ]
+
+    for title, key, color in sections:
+        text = result.get(key, "")
+        if not text:
+            continue
+
+        # Section header with colored bar
+        pdf.set_fill_color(*color)
+        pdf.rect(10, pdf.get_y(), 3, 7, style="F")
+        pdf.set_x(16)
+        pdf.set_font("Helvetica", "B", 11)
+        pdf.set_text_color(*color)
+        pdf.cell(0, 7, title, new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(1)
+
+        # Body text
+        pdf.set_font("Helvetica", "", 9)
+        pdf.set_text_color(40, 40, 40)
+        # Clean up text — handle long lines for PDF wrapping
+        cleaned = text.replace("\r\n", "\n").replace("\r", "\n")
+        pdf.multi_cell(0, 4.5, cleaned)
+        pdf.ln(5)
+
+    # --- Footer on every page ---
+    page_count = pdf.pages_count
+    for i in range(1, page_count + 1):
+        pdf.page = i
+        pdf.set_y(-15)
+        pdf.set_font("Helvetica", "I", 7)
+        pdf.set_text_color(150, 150, 150)
+        pdf.cell(0, 10, f"Quant Team Research  |  Page {i}/{page_count}", align="C")
+
+    return pdf.output()
+
+
+@router.get("/export-pdf")
+def export_research_pdf():
+    """Export the latest research result as a PDF document."""
+    if not _sessions:
+        raise HTTPException(status_code=404, detail="No research session available")
+
+    latest_id = list(_sessions.keys())[-1]
+    s = _sessions[latest_id]
+
+    if s["generating"]:
+        raise HTTPException(status_code=409, detail="Research session still in progress")
+
+    if not s["result"]:
+        raise HTTPException(status_code=404, detail="No research result available")
+
+    pdf_bytes = _build_research_pdf(s["result"])
+    question_slug = (s["result"].get("question", "research") or "research")[:40]
+    safe_slug = "".join(c if c.isalnum() or c in " -_" else "" for c in question_slug).strip().replace(" ", "-")
+    filename = f"research-{safe_slug}.pdf"
+
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

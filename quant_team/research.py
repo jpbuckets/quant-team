@@ -16,6 +16,50 @@ from .market.indicators import compute_all
 
 logger = logging.getLogger("quant_team")
 
+REPORT_WRITER_PROMPT = """\
+You are a senior investment research editor at a top-tier financial publication.
+Your job is to take raw analyst notes from a 4-person research team and rewrite
+them into a polished, cohesive investment newsletter that a portfolio manager
+can act on immediately.
+
+## Output Structure (use ## markdown headings for each section)
+
+## EXECUTIVE BRIEFING
+2-3 paragraph narrative overview. No bullets here — just clear, authoritative
+prose that captures the full picture in 60 seconds of reading.
+
+## MARKET LANDSCAPE
+Current market context and macro conditions woven into a readable narrative.
+Reference specific prices, levels, and percentage changes from the analyst notes.
+
+## QUANTITATIVE PICTURE
+Key technical and quantitative signals. Use a mix of brief narrative and
+selective bullets for key levels and metrics. Bold the most important figures.
+
+## OPPORTUNITIES
+Specific actionable investment ideas with reasoning. Use a mix of short prose
+and structured bullet points. Each opportunity should have a clear thesis.
+
+## RISK FACTORS
+Key risks organized by severity. Brief, punchy prose. Be direct about what
+could go wrong.
+
+## BOTTOM LINE
+1-2 paragraph synthesis with the single most important takeaway and recommended
+positioning. This is what the reader remembers.
+
+## Style Guidelines
+- Write in clear, authoritative financial prose — not academic, not casual
+- Use proper paragraphs (3-5 sentences each), not walls of bullet points
+- Cite specific prices, levels, and percentages from the analyst notes
+- Eliminate redundancy — if multiple analysts flagged the same point, mention
+  it once with proper attribution
+- Use markdown: **bold** for emphasis, - for bullet lists, ## for sections
+- Target 800-1200 words total
+- Never invent data not present in the analyst notes
+- Do not use tables or numbered lists
+"""
+
 
 async def extract_tickers(question: str) -> list[str]:
     """Use Claude Haiku to extract relevant ticker symbols from a freeform question."""
@@ -76,7 +120,7 @@ class ResearchSession:
     ) -> dict:
         """Run a full round-table research session on the user's question."""
         _progress = on_progress or (lambda *a: None)
-        total_steps = len(self.agents) + 2  # ticker extraction + market data + each agent
+        total_steps = len(self.agents) + 3  # ticker extraction + market data + each agent + report writer
 
         # Step 1: Extract tickers
         _progress("Extracting relevant tickers", 1, total_steps)
@@ -165,7 +209,7 @@ class ResearchSession:
         if decision_agent:
             if analyst_agents:
                 await asyncio.sleep(60)
-            _progress(f"{decision_agent.name} synthesizing", total_steps, total_steps)
+            _progress(f"{decision_agent.name} synthesizing", total_steps - 1, total_steps)
             response = await decision_agent.analyze(
                 market_context=market_context,
                 discussion=discussion,
@@ -185,7 +229,32 @@ class ResearchSession:
             )
             analyses[decision_agent.name.lower()] = response
 
-        return {
+        # Step 4: Report Writer — rewrite into polished newsletter
+        newsletter = ""
+        try:
+            await asyncio.sleep(60)
+            _progress("Report Writer composing newsletter", total_steps, total_steps)
+            report_writer = Agent(
+                name="ReportWriter",
+                title="Investment Report Writer",
+                system_prompt=REPORT_WRITER_PROMPT,
+                model="claude-sonnet-4-20250514",
+            )
+            writer_prompt = (
+                f"Rewrite the following analyst notes into a polished investment newsletter.\n\n"
+                f"**Research Question:** {question}\n"
+                f"**Tickers Analyzed:** {', '.join(tickers)}\n\n"
+                f"--- MACRO ANALYST ---\n{analyses.get('macro', 'N/A')}\n\n"
+                f"--- QUANT ANALYST ---\n{analyses.get('quant', 'N/A')}\n\n"
+                f"--- RISK OFFICER ---\n{analyses.get('risk', 'N/A')}\n\n"
+                f"--- CIO SYNTHESIS ---\n{analyses.get('cio', 'N/A')}"
+            )
+            newsletter = await report_writer.respond(writer_prompt)
+            logger.info("Report Writer completed newsletter")
+        except Exception as e:
+            logger.error(f"Report Writer failed: {e}", exc_info=True)
+
+        result = {
             "question": question,
             "tickers_analyzed": tickers,
             "macro": analyses.get("macro", ""),
@@ -193,3 +262,6 @@ class ResearchSession:
             "risk": analyses.get("risk", ""),
             "cio": analyses.get("cio", ""),
         }
+        if newsletter:
+            result["newsletter"] = newsletter
+        return result

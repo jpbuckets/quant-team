@@ -44,6 +44,7 @@
             <span :class="progressStep >= 4 ? 'text-term-cyan' : ''">QUANT</span>
             <span :class="progressStep >= 5 ? 'text-term-red' : ''">RISK</span>
             <span :class="progressStep >= 6 ? 'text-term-green' : ''">CIO</span>
+            <span :class="progressStep >= 7 ? 'text-term-green' : ''">REPORT</span>
         </div>
     </div>
 
@@ -77,40 +78,59 @@
             <span class="text-[0.55rem] text-term-dim">No specific tickers detected — agents analyzed from general knowledge</span>
         </div>
 
-        <!-- Macro -->
-        <div class="bg-term-panel border border-term-border term-glow" x-show="result && result.macro">
-            <div class="px-4 py-2 border-b border-term-border flex items-center gap-2">
-                <span class="w-2 h-2 bg-term-amber"></span>
-                <span class="text-xs text-term-amber text-glow-amber uppercase tracking-wider">MACRO // Senior Macro Strategist</span>
-            </div>
-            <div class="p-4 text-xs text-term-text whitespace-pre-wrap max-h-80 overflow-y-auto leading-relaxed" x-text="result.macro"></div>
-        </div>
-
-        <!-- Quant -->
-        <div class="bg-term-panel border border-term-border term-glow" x-show="result && result.quant">
-            <div class="px-4 py-2 border-b border-term-border flex items-center gap-2">
-                <span class="w-2 h-2 bg-term-cyan"></span>
-                <span class="text-xs text-term-cyan text-glow-cyan uppercase tracking-wider">QUANT // Lead Quantitative Analyst</span>
-            </div>
-            <div class="p-4 text-xs text-term-text whitespace-pre-wrap max-h-80 overflow-y-auto leading-relaxed" x-text="result.quant"></div>
-        </div>
-
-        <!-- Risk -->
-        <div class="bg-term-panel border border-term-border term-glow" x-show="result && result.risk">
-            <div class="px-4 py-2 border-b border-term-border flex items-center gap-2">
-                <span class="w-2 h-2 bg-term-red"></span>
-                <span class="text-xs text-term-red text-glow-red uppercase tracking-wider">RISK // Chief Risk Officer</span>
-            </div>
-            <div class="p-4 text-xs text-term-text whitespace-pre-wrap max-h-80 overflow-y-auto leading-relaxed" x-text="result.risk"></div>
-        </div>
-
-        <!-- CIO -->
-        <div class="bg-term-panel border border-term-green/30 term-glow" x-show="result && result.cio">
+        <!-- Newsletter Report (primary view) -->
+        <div x-show="result && result.newsletter" class="bg-term-panel border border-term-green/30 term-glow">
             <div class="px-4 py-2 border-b border-term-green/30 flex items-center gap-2">
                 <span class="w-2 h-2 bg-term-green"></span>
-                <span class="text-xs text-term-green text-glow uppercase tracking-wider">CIO // Research Summary</span>
+                <span class="text-xs text-term-green text-glow uppercase tracking-wider">INVESTMENT RESEARCH NEWSLETTER</span>
             </div>
-            <div class="p-4 text-xs text-term-text whitespace-pre-wrap max-h-96 overflow-y-auto leading-relaxed" x-text="result.cio"></div>
+            <div class="p-5 text-xs text-term-text whitespace-pre-wrap leading-relaxed" x-text="result.newsletter"></div>
+        </div>
+
+        <!-- Raw Agent Analysis (collapsible) -->
+        <div x-data="{ showRaw: false }">
+            <button @click="showRaw = !showRaw"
+                    class="w-full px-4 py-2 border border-term-border text-[0.6rem] text-term-dim hover:text-term-text hover:border-term-green/30 transition-colors uppercase tracking-wider text-left flex items-center justify-between">
+                <span x-text="showRaw ? '[ HIDE RAW AGENT ANALYSIS ]' : '[ SHOW RAW AGENT ANALYSIS ]'"></span>
+                <span x-text="showRaw ? '▲' : '▼'" class="text-term-dim"></span>
+            </button>
+            <div x-show="showRaw" x-transition class="space-y-3 mt-3">
+                <!-- Macro -->
+                <div class="bg-term-panel border border-term-border term-glow" x-show="result && result.macro">
+                    <div class="px-4 py-2 border-b border-term-border flex items-center gap-2">
+                        <span class="w-2 h-2 bg-term-amber"></span>
+                        <span class="text-xs text-term-amber text-glow-amber uppercase tracking-wider">MACRO // Senior Macro Strategist</span>
+                    </div>
+                    <div class="p-4 text-xs text-term-text whitespace-pre-wrap max-h-80 overflow-y-auto leading-relaxed" x-text="result.macro"></div>
+                </div>
+
+                <!-- Quant -->
+                <div class="bg-term-panel border border-term-border term-glow" x-show="result && result.quant">
+                    <div class="px-4 py-2 border-b border-term-border flex items-center gap-2">
+                        <span class="w-2 h-2 bg-term-cyan"></span>
+                        <span class="text-xs text-term-cyan text-glow-cyan uppercase tracking-wider">QUANT // Lead Quantitative Analyst</span>
+                    </div>
+                    <div class="p-4 text-xs text-term-text whitespace-pre-wrap max-h-80 overflow-y-auto leading-relaxed" x-text="result.quant"></div>
+                </div>
+
+                <!-- Risk -->
+                <div class="bg-term-panel border border-term-border term-glow" x-show="result && result.risk">
+                    <div class="px-4 py-2 border-b border-term-border flex items-center gap-2">
+                        <span class="w-2 h-2 bg-term-red"></span>
+                        <span class="text-xs text-term-red text-glow-red uppercase tracking-wider">RISK // Chief Risk Officer</span>
+                    </div>
+                    <div class="p-4 text-xs text-term-text whitespace-pre-wrap max-h-80 overflow-y-auto leading-relaxed" x-text="result.risk"></div>
+                </div>
+
+                <!-- CIO -->
+                <div class="bg-term-panel border border-term-green/30 term-glow" x-show="result && result.cio">
+                    <div class="px-4 py-2 border-b border-term-green/30 flex items-center gap-2">
+                        <span class="w-2 h-2 bg-term-green"></span>
+                        <span class="text-xs text-term-green text-glow uppercase tracking-wider">CIO // Research Summary</span>
+                    </div>
+                    <div class="p-4 text-xs text-term-text whitespace-pre-wrap max-h-96 overflow-y-auto leading-relaxed" x-text="result.cio"></div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -132,7 +152,7 @@ function researchApp() {
         result: null,
         progressLabel: 'Starting...',
         progressStep: 0,
-        progressTotal: 6,
+        progressTotal: 7,
 
         init() {},
 
@@ -172,7 +192,7 @@ function researchApp() {
                         if (status.progress) {
                             this.progressLabel = status.progress.step || 'Working...';
                             this.progressStep = status.progress.step_num || 0;
-                            this.progressTotal = status.progress.total_steps || 6;
+                            this.progressTotal = status.progress.total_steps || 7;
                         }
 
                         if (status.error) {

@@ -39,7 +39,7 @@ async def _run_research(session_id: str, question: str, team_id: str) -> None:
         "generating": True,
         "error": None,
         "result": None,
-        "progress": {"step": "Starting...", "step_num": 0, "total_steps": 6},
+        "progress": {"step": "Starting...", "step_num": 0, "total_steps": 7},
     }
     try:
         registry = TeamRegistry()
@@ -81,7 +81,7 @@ def research_status():
             "generating": False,
             "error": None,
             "result": None,
-            "progress": {"step": "", "step_num": 0, "total_steps": 6},
+            "progress": {"step": "", "step_num": 0, "total_steps": 7},
         }
     latest_id = list(_sessions.keys())[-1]
     s = _sessions[latest_id]
@@ -212,6 +212,92 @@ _DIM = (100, 110, 120)
 _TEXT = (40, 45, 50)
 
 
+def _render_header(pdf: FPDF, timestamp: str, tickers: list[str]) -> None:
+    """Render the dark branded header banner."""
+    banner_h = 38
+    pdf.set_fill_color(*_DARK)
+    pdf.rect(0, 0, 210, banner_h, style="F")
+    pdf.set_fill_color(*_GREEN)
+    pdf.rect(0, banner_h, 210, 1.2, style="F")
+
+    pdf.set_y(8)
+    pdf.set_font("Courier", "B", 16)
+    pdf.set_text_color(*_GREEN)
+    pdf.cell(0, 7, "  > QUANT_TEAM", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Courier", "", 8)
+    pdf.set_text_color(120, 140, 120)
+    pdf.cell(0, 4, "    // investment research newsletter", new_x="LMARGIN", new_y="NEXT")
+
+    pdf.set_y(10)
+    pdf.set_font("Courier", "", 7)
+    pdf.set_text_color(100, 120, 100)
+    pdf.cell(0, 4, timestamp, align="R", new_x="LMARGIN", new_y="NEXT")
+    if tickers:
+        pdf.cell(0, 4, "  ".join(tickers), align="R", new_x="LMARGIN", new_y="NEXT")
+
+    pdf.set_y(banner_h + 6)
+
+
+def _render_footer(pdf: FPDF, timestamp: str) -> None:
+    """Render the dark branded footer on every page."""
+    pdf.set_auto_page_break(auto=False)
+    page_count = pdf.pages_count
+    for i in range(1, page_count + 1):
+        pdf.page = i
+        pdf.set_fill_color(*_DARK)
+        pdf.rect(0, 284, 210, 13, style="F")
+        pdf.set_fill_color(*_GREEN)
+        pdf.rect(0, 284, 210, 0.5, style="F")
+        pdf.set_y(286)
+        pdf.set_font("Courier", "", 6.5)
+        pdf.set_text_color(*_GREEN)
+        pdf.cell(95, 4, "  > QUANT_TEAM // terminal", new_x="RIGHT")
+        pdf.set_text_color(100, 120, 100)
+        pdf.cell(95, 4, f"page {i}/{page_count}  |  {timestamp}", align="R")
+
+
+def _render_agent_appendix(pdf: FPDF, result: dict) -> None:
+    """Render raw agent notes as a compact appendix."""
+    r, g, b = _TEXT
+    text_hex = f"#{r:02x}{g:02x}{b:02x}"
+
+    # Appendix header
+    pdf.set_draw_color(*_GREEN)
+    pdf.set_line_width(0.3)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(4)
+    pdf.set_font("Courier", "B", 8)
+    pdf.set_text_color(*_GREEN_DIM)
+    pdf.cell(0, 5, "> APPENDIX: RAW AGENT NOTES", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(3)
+
+    agent_sections = [
+        ("MACRO  //  Senior Macro Strategist", "macro", _AMBER),
+        ("QUANT  //  Lead Quantitative Analyst", "quant", _CYAN),
+        ("RISK  //  Chief Risk Officer", "risk", _RED),
+        ("CIO  //  Chief Investment Officer", "cio", _GREEN),
+    ]
+
+    for title, key, color in agent_sections:
+        text = result.get(key, "")
+        if not text:
+            continue
+
+        pdf.set_fill_color(*color)
+        pdf.rect(10, pdf.get_y(), 2, 5, style="F")
+        pdf.set_x(14)
+        pdf.set_font("Courier", "B", 8)
+        pdf.set_text_color(*color)
+        pdf.cell(0, 5, title, new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(1)
+
+        pdf.set_font("Helvetica", "", 8)
+        pdf.set_text_color(*_TEXT)
+        html = _md_to_html(text)
+        pdf.write_html(f'<font color="{text_hex}" size="8">{html}</font>')
+        pdf.ln(4)
+
+
 def _build_research_pdf(result: dict) -> bytes:
     """Build a branded PDF from research session results."""
     pdf = FPDF()
@@ -221,38 +307,15 @@ def _build_research_pdf(result: dict) -> bytes:
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     question = result.get("question", "")
     tickers = result.get("tickers_analyzed", [])
-    cio_text = result.get("cio", "")
-    cio_sections = _extract_cio_sections(cio_text)
+    newsletter = result.get("newsletter", "")
+
+    r, g, b = _TEXT
+    text_hex = f"#{r:02x}{g:02x}{b:02x}"
 
     # =====================================================================
-    #  HEADER — dark banner with ASCII branding
+    #  HEADER
     # =====================================================================
-    banner_h = 38
-    pdf.set_fill_color(*_DARK)
-    pdf.rect(0, 0, 210, banner_h, style="F")
-
-    # Green accent line under banner
-    pdf.set_fill_color(*_GREEN)
-    pdf.rect(0, banner_h, 210, 1.2, style="F")
-
-    # ASCII logo
-    pdf.set_y(8)
-    pdf.set_font("Courier", "B", 16)
-    pdf.set_text_color(*_GREEN)
-    pdf.cell(0, 7, "  > QUANT_TEAM", new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font("Courier", "", 8)
-    pdf.set_text_color(120, 140, 120)
-    pdf.cell(0, 4, "    // research report  |  multi-agent analysis terminal", new_x="LMARGIN", new_y="NEXT")
-
-    # Timestamp and tickers — right-aligned in header
-    pdf.set_y(10)
-    pdf.set_font("Courier", "", 7)
-    pdf.set_text_color(100, 120, 100)
-    pdf.cell(0, 4, timestamp, align="R", new_x="LMARGIN", new_y="NEXT")
-    if tickers:
-        pdf.cell(0, 4, "  ".join(tickers), align="R", new_x="LMARGIN", new_y="NEXT")
-
-    pdf.set_y(banner_h + 6)
+    _render_header(pdf, timestamp, tickers)
 
     # =====================================================================
     #  RESEARCH QUESTION
@@ -267,72 +330,57 @@ def _build_research_pdf(result: dict) -> bytes:
         pdf.ln(5)
 
     # =====================================================================
-    #  EXECUTIVE SUMMARY BOX — key takeaways + trade recommendations
+    #  MAIN BODY — newsletter or fallback to summary + raw agents
     # =====================================================================
-    _render_summary_box(pdf, cio_sections, cio_text)
-
-    # =====================================================================
-    #  FULL AGENT ANALYSIS
-    # =====================================================================
-    pdf.set_font("Courier", "B", 9)
-    pdf.set_text_color(*_GREEN_DIM)
-    pdf.cell(0, 6, "> FULL AGENT ANALYSIS", new_x="LMARGIN", new_y="NEXT")
-
-    # Thin green rule
-    pdf.set_draw_color(*_GREEN)
-    pdf.set_line_width(0.3)
-    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.ln(4)
-
-    agent_sections = [
-        ("MACRO  //  Senior Macro Strategist", "macro", _AMBER),
-        ("QUANT  //  Lead Quantitative Analyst", "quant", _CYAN),
-        ("RISK  //  Chief Risk Officer", "risk", _RED),
-        ("CIO  //  Chief Investment Officer", "cio", _GREEN),
-    ]
-
-    for title, key, color in agent_sections:
-        text = result.get(key, "")
-        if not text:
-            continue
-
-        # Agent header — colored bar + monospace label
-        pdf.set_fill_color(*color)
-        pdf.rect(10, pdf.get_y(), 2.5, 6, style="F")
-        pdf.set_x(15)
-        pdf.set_font("Courier", "B", 9)
-        pdf.set_text_color(*color)
-        pdf.cell(0, 6, title, new_x="LMARGIN", new_y="NEXT")
-        pdf.ln(1)
-
-        # Body — render with markdown formatting
-        pdf.set_font("Helvetica", "", 9)
+    if newsletter:
+        # Newsletter is the primary content
+        pdf.set_font("Helvetica", "", 10)
         pdf.set_text_color(*_TEXT)
-        r, g, b = _TEXT
-        html = _md_to_html(text)
-        pdf.write_html(
-            f'<font color="#{r:02x}{g:02x}{b:02x}" size="9">{html}</font>',
-        )
+        html = _md_to_html(newsletter)
+        pdf.write_html(f'<font color="{text_hex}" size="10">{html}</font>')
         pdf.ln(6)
 
+        # Raw agent notes as appendix
+        _render_agent_appendix(pdf, result)
+    else:
+        # Fallback — no newsletter, use old executive summary + full agents
+        cio_text = result.get("cio", "")
+        cio_sections = _extract_cio_sections(cio_text)
+        _render_summary_box(pdf, cio_sections, cio_text)
+
+        pdf.set_font("Courier", "B", 9)
+        pdf.set_text_color(*_GREEN_DIM)
+        pdf.cell(0, 6, "> FULL AGENT ANALYSIS", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_draw_color(*_GREEN)
+        pdf.set_line_width(0.3)
+        pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+        pdf.ln(4)
+
+        for title, key, color in [
+            ("MACRO  //  Senior Macro Strategist", "macro", _AMBER),
+            ("QUANT  //  Lead Quantitative Analyst", "quant", _CYAN),
+            ("RISK  //  Chief Risk Officer", "risk", _RED),
+            ("CIO  //  Chief Investment Officer", "cio", _GREEN),
+        ]:
+            text = result.get(key, "")
+            if not text:
+                continue
+            pdf.set_fill_color(*color)
+            pdf.rect(10, pdf.get_y(), 2.5, 6, style="F")
+            pdf.set_x(15)
+            pdf.set_font("Courier", "B", 9)
+            pdf.set_text_color(*color)
+            pdf.cell(0, 6, title, new_x="LMARGIN", new_y="NEXT")
+            pdf.ln(1)
+            pdf.set_font("Helvetica", "", 9)
+            html = _md_to_html(text)
+            pdf.write_html(f'<font color="{text_hex}" size="9">{html}</font>')
+            pdf.ln(6)
+
     # =====================================================================
-    #  FOOTER on every page
+    #  FOOTER
     # =====================================================================
-    pdf.set_auto_page_break(auto=False)
-    page_count = pdf.pages_count
-    for i in range(1, page_count + 1):
-        pdf.page = i
-        # Dark footer bar
-        pdf.set_fill_color(*_DARK)
-        pdf.rect(0, 284, 210, 13, style="F")
-        pdf.set_fill_color(*_GREEN)
-        pdf.rect(0, 284, 210, 0.5, style="F")
-        pdf.set_y(286)
-        pdf.set_font("Courier", "", 6.5)
-        pdf.set_text_color(*_GREEN)
-        pdf.cell(95, 4, "  > QUANT_TEAM // terminal", new_x="RIGHT")
-        pdf.set_text_color(100, 120, 100)
-        pdf.cell(95, 4, f"page {i}/{page_count}  |  {timestamp}", align="R")
+    _render_footer(pdf, timestamp)
 
     return pdf.output()
 

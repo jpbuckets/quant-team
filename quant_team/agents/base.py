@@ -40,11 +40,12 @@ class Agent:
         """Have this agent analyze data and contribute to the discussion."""
         messages = []
 
-        # Build the user message with market context and prior discussion
+        # Build the user message — market data FIRST so the model reads
+        # live prices before seeing the question and forming its answer
         parts = []
+        parts.append(f"## Market Data & Indicators\n{market_context}")
         if task:
             parts.append(f"## Task\n{task}")
-        parts.append(f"## Market Data & Indicators\n{market_context}")
 
         if discussion:
             parts.append("## Team Discussion So Far")

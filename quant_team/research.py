@@ -86,8 +86,19 @@ class ResearchSession:
         # Step 2: Fetch market data for extracted tickers
         _progress("Fetching market data", 2, total_steps)
         market_context_parts = []
+        live_quotes: list[str] = []
 
         if tickers:
+            # Fetch live quotes first — these go into a prominent header
+            for ticker in tickers:
+                try:
+                    q = self.market.fetch_quote(ticker)
+                    live_quotes.append(
+                        f"  {ticker}: ${q['price']:,.2f} ({q['change_pct']:+.2f}%)"
+                    )
+                except Exception:
+                    pass
+
             try:
                 market_context_parts.append(self.market.get_market_summary(tickers))
             except Exception as e:
@@ -103,7 +114,17 @@ class ResearchSession:
 
         now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
         if market_context_parts:
-            market_context = f"# Market Data (fetched live at {now})\n\n"
+            # Build a prominent live price header that cannot be missed
+            price_block = "\n".join(live_quotes) if live_quotes else ""
+            market_context = (
+                "╔══════════════════════════════════════════════════╗\n"
+                f"║  LIVE MARKET DATA — fetched {now}  ║\n"
+                "╚══════════════════════════════════════════════════╝\n"
+                f"\nCURRENT PRICES (use ONLY these prices in your analysis):\n"
+                f"{price_block}\n\n"
+                "These are real-time prices. Do NOT use any other prices.\n"
+                "If you cite a price, it MUST match the data above.\n\n"
+            )
             market_context += "\n".join(market_context_parts)
             market_context += f"\n\n## RESEARCH QUESTION\n{question}"
         else:

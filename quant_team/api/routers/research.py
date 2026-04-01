@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import io
 import logging
+import re
 import uuid
 from datetime import datetime, timezone
 
@@ -104,6 +105,70 @@ _UNICODE_MAP = str.maketrans({
 def _sanitize(text: str) -> str:
     """Replace Unicode characters unsupported by PDF built-in fonts."""
     return text.translate(_UNICODE_MAP).encode("latin-1", errors="replace").decode("latin-1")
+
+
+def _md_to_html(text: str) -> str:
+    """Convert markdown-ish agent output to simple HTML for fpdf2's write_html."""
+    text = _sanitize(text.replace("\r\n", "\n").replace("\r", "\n"))
+
+    lines = text.split("\n")
+    html_lines: list[str] = []
+    in_list = False
+
+    for line in lines:
+        stripped = line.strip()
+
+        # Blank line — close list if open, add spacing
+        if not stripped:
+            if in_list:
+                html_lines.append("</ul>")
+                in_list = False
+            html_lines.append("<br>")
+            continue
+
+        # Headings: ### or **HEADING** on its own line
+        if re.match(r"^#{1,4}\s+", stripped):
+            heading_text = re.sub(r"^#{1,4}\s+", "", stripped)
+            if in_list:
+                html_lines.append("</ul>")
+                in_list = False
+            html_lines.append(f'<b><font size="11">{heading_text}</font></b><br>')
+            continue
+
+        # Standalone bold line (like **KEY FINDINGS**)
+        bold_match = re.match(r"^\*\*(.+)\*\*\s*$", stripped)
+        if bold_match:
+            if in_list:
+                html_lines.append("</ul>")
+                in_list = False
+            html_lines.append(f'<br><b><font size="10">{bold_match.group(1)}</font></b><br>')
+            continue
+
+        # Bullet points: - or * at start
+        bullet_match = re.match(r"^[-*]\s+(.+)$", stripped)
+        if bullet_match:
+            if not in_list:
+                html_lines.append("<ul>")
+                in_list = True
+            bullet_content = bullet_match.group(1)
+            # Inline bold within bullets
+            bullet_content = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", bullet_content)
+            html_lines.append(f"<li>{bullet_content}</li>")
+            continue
+
+        # Regular paragraph — close list if open
+        if in_list:
+            html_lines.append("</ul>")
+            in_list = False
+
+        # Inline bold
+        para = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", stripped)
+        html_lines.append(f"{para}<br>")
+
+    if in_list:
+        html_lines.append("</ul>")
+
+    return "\n".join(html_lines)
 
 
 def _extract_cio_sections(cio_text: str) -> dict[str, str]:
@@ -240,12 +305,15 @@ def _build_research_pdf(result: dict) -> bytes:
         pdf.cell(0, 6, title, new_x="LMARGIN", new_y="NEXT")
         pdf.ln(1)
 
-        # Body
-        pdf.set_font("Helvetica", "", 8.5)
+        # Body — render with markdown formatting
+        pdf.set_font("Helvetica", "", 9)
         pdf.set_text_color(*_TEXT)
-        cleaned = _sanitize(text.replace("\r\n", "\n").replace("\r", "\n"))
-        pdf.multi_cell(0, 4.2, cleaned)
-        pdf.ln(5)
+        r, g, b = _TEXT
+        html = _md_to_html(text)
+        pdf.write_html(
+            f'<font color="#{r:02x}{g:02x}{b:02x}" size="9">{html}</font>',
+        )
+        pdf.ln(6)
 
     # =====================================================================
     #  FOOTER on every page
@@ -298,6 +366,9 @@ def _render_summary_box(pdf: FPDF, sections: dict[str, str], cio_text: str) -> N
     pdf.cell(0, 6, "> EXECUTIVE SUMMARY", new_x="LMARGIN", new_y="NEXT")
     pdf.ln(1)
 
+    r, g, b = _TEXT
+    text_hex = f"#{r:02x}{g:02x}{b:02x}"
+
     # Key Takeaways
     if key_findings:
         pdf.set_x(15)
@@ -306,8 +377,8 @@ def _render_summary_box(pdf: FPDF, sections: dict[str, str], cio_text: str) -> N
         pdf.cell(0, 5, "KEY TAKEAWAYS", new_x="LMARGIN", new_y="NEXT")
         pdf.set_x(15)
         pdf.set_font("Helvetica", "", 9)
-        pdf.set_text_color(*_TEXT)
-        pdf.multi_cell(180, 4.5, _sanitize(key_findings))
+        html = _md_to_html(key_findings)
+        pdf.write_html(f'<font color="{text_hex}" size="9">{html}</font>')
         pdf.ln(3)
 
     # Trade Recommendations
@@ -318,20 +389,21 @@ def _render_summary_box(pdf: FPDF, sections: dict[str, str], cio_text: str) -> N
         pdf.cell(0, 5, "TRADE RECOMMENDATIONS", new_x="LMARGIN", new_y="NEXT")
         pdf.set_x(15)
         pdf.set_font("Helvetica", "", 9)
-        pdf.set_text_color(*_TEXT)
-        pdf.multi_cell(180, 4.5, _sanitize(actionable))
+        html = _md_to_html(actionable)
+        pdf.write_html(f'<font color="{text_hex}" size="9">{html}</font>')
         pdf.ln(3)
 
     # Key Risks (brief)
     if risks:
         pdf.set_x(15)
         pdf.set_font("Courier", "B", 8)
+        rr, rg, rb = _RED
         pdf.set_text_color(*_RED)
         pdf.cell(0, 5, "KEY RISKS", new_x="LMARGIN", new_y="NEXT")
         pdf.set_x(15)
         pdf.set_font("Helvetica", "", 9)
-        pdf.set_text_color(*_TEXT)
-        pdf.multi_cell(180, 4.5, _sanitize(risks))
+        html = _md_to_html(risks)
+        pdf.write_html(f'<font color="{text_hex}" size="9">{html}</font>')
         pdf.ln(2)
 
     end_y = pdf.get_y()

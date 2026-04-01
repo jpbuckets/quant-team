@@ -129,8 +129,11 @@ class ResearchSession:
                 discussion=discussion,
                 task=(
                     f"A user has asked your team a research question. Analyze it from "
-                    f"your perspective as {agent.title}. Provide detailed, actionable insights. "
-                    f"Reference specific data points where available.\n\n"
+                    f"your perspective as {agent.title}. Provide detailed, actionable insights.\n\n"
+                    f"IMPORTANT: The Market Data section above contains LIVE prices fetched "
+                    f"moments ago. Use these exact prices and figures in your analysis — do NOT "
+                    f"rely on older prices from your training data. Cite specific current prices, "
+                    f"percentage changes, and levels from the provided data.\n\n"
                     f"Question: {question}"
                 ),
             )
@@ -152,6 +155,9 @@ class ResearchSession:
                     f"**OPPORTUNITIES** — Specific investment opportunities identified\n"
                     f"**RISKS** — Key risks and concerns to watch\n"
                     f"**ACTIONABLE IDEAS** — Concrete next steps or trades to consider\n\n"
+                    f"IMPORTANT: The Market Data section above contains LIVE prices fetched "
+                    f"moments ago. Reference these exact current prices in your synthesis — "
+                    f"do NOT use older prices from your training data.\n\n"
                     f"Do NOT output JSON trade blocks. This is a research session, not a trading session.\n\n"
                     f"Question: {question}"
                 ),
